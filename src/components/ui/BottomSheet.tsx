@@ -32,7 +32,11 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
           />
           <motion.div
-            className="scroll-ios relative max-h-[90vh] overflow-y-auto rounded-t-sheet bg-parchment-50 px-5 pt-3 shadow-2xl safe-bottom"
+            className="scroll-ios relative max-h-[85dvh] overflow-y-auto rounded-t-sheet bg-parchment-50 px-5 pt-3 shadow-2xl safe-bottom"
+            style={{
+              marginBottom: 'var(--keyboard-height, 0px)',
+              transition: 'margin-bottom 0.2s ease',
+            }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}

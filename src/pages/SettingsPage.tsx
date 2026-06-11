@@ -65,12 +65,12 @@ export function SettingsPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Settings" />
 
       {/* Account */}
       <Section title="Account">
-        <Row label="Signed in as" value={user?.email ?? '—'} />
+        <Row label="Signed in as" value={user?.email ?? 'Not signed in'} />
         <Button
           variant="ghost"
           fullWidth
@@ -115,7 +115,7 @@ export function SettingsPage() {
                     {s.is_active && <Badge tone="green">Active</Badge>}
                   </div>
                   <p className="mt-0.5 font-sans text-xs text-ink-500">
-                    {formatLongDate(s.start_date)} – {formatLongDate(s.end_date)}
+                    {formatLongDate(s.start_date)} to {formatLongDate(s.end_date)}
                   </p>
                 </button>
               </div>
@@ -174,7 +174,7 @@ export function SettingsPage() {
             <p className="mb-2 font-sans text-xs font-medium text-ink-500">
               Export course attendance (CSV)
             </p>
-            <div className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {courses!.map((c) => (
                 <button
                   key={c.id}
@@ -201,8 +201,8 @@ export function SettingsPage() {
       <Section title="About">
         <Row label="Version" value={APP_VERSION} />
         <p className="mt-2 font-sans text-sm text-ink-500">
-          Attend is a local-first attendance tracker. Your data lives on this
-          device and syncs privately to your account.
+          Attend keeps your classes and attendance on your device, and quietly
+          backs them up to your account.
         </p>
       </Section>
 

@@ -88,7 +88,7 @@ export function CourseCard({ course, onEdit }: CourseCardProps) {
         color={hasSessions ? undefined : '#D4D2CB'}
       >
         <span className="font-sans text-sm font-semibold text-ink-900">
-          {hasSessions ? `${Math.round(stats!.percentage)}%` : '—'}
+          {hasSessions ? `${Math.round(stats!.percentage)}%` : ''}
         </span>
       </ProgressRing>
     </motion.div>

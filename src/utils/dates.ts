@@ -21,7 +21,7 @@ export function formatLongDate(key: string): string {
   return format(fromDateKey(key), 'd MMMM yyyy');
 }
 
-/** "August 2025" — month grouping label */
+/** "August 2025" month grouping label */
 export function formatMonthLabel(date: Date): string {
   return format(date, 'MMMM yyyy');
 }

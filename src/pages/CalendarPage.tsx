@@ -80,7 +80,7 @@ export function CalendarPage() {
   const daySessions = selectedDay ? (byDate.get(selectedDay) ?? []) : [];
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <PageHeader title="Calendar" right={<SyncIndicator />} />
 
       {/* Course filter */}

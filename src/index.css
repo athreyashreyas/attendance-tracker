@@ -10,6 +10,7 @@
     --safe-bottom: env(safe-area-inset-bottom);
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
+    --keyboard-height: 0px;
   }
 
   html {
@@ -48,6 +49,12 @@
   }
   .pb-safe {
     padding-bottom: var(--safe-bottom);
+  }
+  .pl-safe {
+    padding-left: var(--safe-left);
+  }
+  .pr-safe {
+    padding-right: var(--safe-right);
   }
 
   /* Respect the notch / Dynamic Island */

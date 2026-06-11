@@ -67,7 +67,7 @@ export function CourseDetailPage() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative mx-auto max-w-3xl pb-24 md:pb-2">
       <PageHeader
         title={course.name}
         subtitle={semester?.name}
@@ -104,7 +104,7 @@ export function CourseDetailPage() {
         >
           <div className="text-center">
             <span className="block font-serif text-2xl text-ink-900">
-              {stats && stats.total > 0 ? `${Math.round(stats.percentage)}%` : '—'}
+              {stats && stats.total > 0 ? `${Math.round(stats.percentage)}%` : ''}
             </span>
             <span className="font-sans text-[10px] text-ink-500">
               of {course.min_attendance_pct}%
@@ -179,7 +179,7 @@ export function CourseDetailPage() {
         type="button"
         whileTap={{ scale: 0.92 }}
         onClick={openNewSession}
-        className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg"
+        className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-8 md:right-8"
         aria-label="Add class"
       >
         <Plus size={26} />
@@ -227,18 +227,18 @@ function ThresholdCallout({
     tone = 'rose';
     message =
       recover !== null
-        ? `Below ${threshold}% — attend ${recover} class${
+        ? `You're below ${threshold}%. Attend ${recover} class${
             recover === 1 ? '' : 'es'
-          } in a row to recover.`
-        : `Below ${threshold}% — attendance can't recover to ${threshold}% this term.`;
+          } in a row to get back above it.`
+        : `You're below ${threshold}%, and it can't get back to ${threshold}% this term.`;
   } else if (percentage < threshold + 5) {
     tone = 'amber';
-    message = `Right on the line — you can miss ${canMissMore} more before dropping below ${threshold}%.`;
+    message = `You're close to the line. You can miss ${canMissMore} more before dropping below ${threshold}%.`;
   } else {
     tone = 'sage';
-    message = `On track — you can miss ${canMissMore} more class${
+    message = `You're on track. You can miss ${canMissMore} more class${
       canMissMore === 1 ? '' : 'es'
-    }.`;
+    } and stay above ${threshold}%.`;
   }
 
   const toneClasses = {

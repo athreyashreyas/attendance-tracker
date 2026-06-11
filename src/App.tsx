@@ -7,10 +7,13 @@ import { router } from './router';
 import { initAuth, useAuthStore } from './stores/authStore';
 import { syncEngine } from './lib/sync';
 import { useRealtime } from './hooks/useRealtime';
+import { useKeyboardInset } from './hooks/useKeyboardInset';
 import { QuotaToast } from './components/ui/QuotaToast';
 
 function AppInner() {
   const userId = useAuthStore((s) => s.session?.user?.id ?? null);
+
+  useKeyboardInset();
 
   useEffect(() => {
     initAuth();

@@ -136,7 +136,7 @@ export function QuickMarkPage() {
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.4}
             onDragEnd={handleDragEnd}
-            className="w-full rounded-sheet p-8 text-center"
+            className="mx-auto w-full max-w-md rounded-sheet p-8 text-center"
             style={{ backgroundColor: hexToRgba(course.color, 0.08) }}
           >
             <p className="font-sans text-xs font-medium uppercase tracking-wide text-ink-300">
@@ -152,8 +152,8 @@ export function QuickMarkPage() {
             {current && (
               <p className="mt-3 font-sans text-sm text-ink-500">
                 Marked{' '}
-                <span className="font-semibold">{current.status}</span> — tap to
-                change
+                <span className="font-semibold">{current.status}</span>. Tap to
+                change.
               </p>
             )}
 

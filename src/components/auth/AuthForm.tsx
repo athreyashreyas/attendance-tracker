@@ -19,12 +19,14 @@ export function AuthForm({ onAuthed }: AuthFormProps) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [offerSignup, setOfferSignup] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    setOfferSignup(false);
 
     if (!email || !password) {
       setError('Email and password are required.');
@@ -44,7 +46,14 @@ export function AuthForm({ onAuthed }: AuthFormProps) {
       if (mode === 'signin') {
         const { error: err } = await signInWithEmail(email, password);
         if (err) {
-          setError(err);
+          if (/invalid login credentials/i.test(err)) {
+            setError(
+              "We couldn't sign you in. If you're new here, you can create an account below. Otherwise, double-check your password and try again."
+            );
+            setOfferSignup(true);
+          } else {
+            setError(err);
+          }
           return;
         }
         onAuthed();
@@ -73,6 +82,7 @@ export function AuthForm({ onAuthed }: AuthFormProps) {
     setMode(next);
     setError(null);
     setInfo(null);
+    setOfferSignup(false);
   }
 
   return (
@@ -159,7 +169,18 @@ export function AuthForm({ onAuthed }: AuthFormProps) {
         </AnimatePresence>
 
         {error && (
-          <p className="font-sans text-sm text-rose-600">{error}</p>
+          <div className="space-y-2">
+            <p className="font-sans text-sm text-rose-600">{error}</p>
+            {offerSignup && (
+              <button
+                type="button"
+                onClick={() => switchMode('signup')}
+                className="font-sans text-sm font-semibold text-sage-600"
+              >
+                Create an account →
+              </button>
+            )}
+          </div>
         )}
         {info && <p className="font-sans text-sm text-sage-600">{info}</p>}
 

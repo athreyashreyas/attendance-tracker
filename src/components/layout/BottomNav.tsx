@@ -1,26 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Calendar, CheckCircle2, Settings, type LucideIcon } from 'lucide-react';
+import { NAV_ITEMS } from './navItems';
 
-interface Tab {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  accent?: boolean;
-}
-
-const tabs: Tab[] = [
-  { to: '/dashboard', label: 'Home', icon: Home },
-  { to: '/calendar', label: 'Calendar', icon: Calendar },
-  { to: '/quick-mark', label: 'Mark', icon: CheckCircle2, accent: true },
-  { to: '/settings', label: 'Settings', icon: Settings },
-];
-
+/** Bottom tab bar for phone portrait only (hidden at md+, where the rail takes over). */
 export function BottomNav() {
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-parchment-300 bg-parchment-100/90 backdrop-blur-md">
+    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-parchment-300 bg-parchment-100/90 backdrop-blur-md md:hidden">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1.5">
-        {tabs.map(({ to, label, icon: Icon, accent }) => (
+        {NAV_ITEMS.map(({ to, label, icon: Icon, accent }) => (
           <NavLink
             key={to}
             to={to}
@@ -32,12 +19,12 @@ export function BottomNav() {
                   whileTap={{ scale: 0.9 }}
                   className={
                     accent
-                      ? '-mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-sage-500 text-white shadow-md'
-                      : 'flex h-7 items-center justify-center'
+                      ? 'flex h-8 w-8 items-center justify-center rounded-full bg-sage-500 text-white shadow-sm'
+                      : 'flex h-8 items-center justify-center'
                   }
                 >
                   <Icon
-                    size={22}
+                    size={accent ? 20 : 22}
                     strokeWidth={2}
                     className={
                       accent
@@ -50,7 +37,11 @@ export function BottomNav() {
                 </motion.span>
                 <span
                   className={`text-[10px] font-medium ${
-                    isActive ? 'text-sage-600' : 'text-ink-300'
+                    accent
+                      ? 'text-sage-600'
+                      : isActive
+                        ? 'text-sage-600'
+                        : 'text-ink-300'
                   }`}
                 >
                   {label}

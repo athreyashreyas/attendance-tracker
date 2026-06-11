@@ -37,7 +37,7 @@ export function DashboardPage() {
   const showEmpty = !isLoading && (courses?.length ?? 0) === 0;
 
   return (
-    <div className="relative">
+    <div className="relative pb-24 md:pb-2">
       <PageHeader
         title="Attend"
         subtitle={semester?.name ?? 'No active semester'}
@@ -71,7 +71,7 @@ export function DashboardPage() {
       )}
 
       {isLoading && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           <CourseCardSkeleton />
           <CourseCardSkeleton />
           <CourseCardSkeleton />
@@ -105,7 +105,7 @@ export function DashboardPage() {
           variants={listContainer}
           initial="initial"
           animate="animate"
-          className="space-y-3"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
           {courses!.map((course) => (
             <CourseCard key={course.id} course={course} onEdit={openEdit} />
@@ -118,7 +118,7 @@ export function DashboardPage() {
           type="button"
           whileTap={{ scale: 0.92 }}
           onClick={openAdd}
-          className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg"
+          className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-8 md:right-8"
           aria-label="Add course"
         >
           <Plus size={26} />
