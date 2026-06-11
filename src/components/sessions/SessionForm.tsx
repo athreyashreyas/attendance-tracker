@@ -1,0 +1,199 @@
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Check, X, CircleSlash, Trash2 } from 'lucide-react';
+import { BottomSheet } from '../ui/BottomSheet';
+import { Button } from '../ui/Button';
+import {
+  useSessionMutations,
+  findSessionForDate,
+} from '../../hooks/useSessions';
+import { todayKey } from '../../utils/dates';
+import type { Session, SessionStatus } from '../../types';
+
+interface SessionFormProps {
+  open: boolean;
+  onClose: () => void;
+  courseId: string;
+  session?: Session | null;
+  defaultDate?: string;
+}
+
+const STATUS_OPTIONS: {
+  value: SessionStatus;
+  label: string;
+  icon: typeof Check;
+  active: string;
+}[] = [
+  { value: 'present', label: 'Present', icon: Check, active: 'bg-sage-500 text-white' },
+  { value: 'absent', label: 'Absent', icon: X, active: 'bg-rose-500 text-white' },
+  {
+    value: 'cancelled',
+    label: 'Cancelled',
+    icon: CircleSlash,
+    active: 'bg-ink-500 text-white',
+  },
+];
+
+const MAX_NOTES = 200;
+
+export function SessionForm({
+  open,
+  onClose,
+  courseId,
+  session,
+  defaultDate,
+}: SessionFormProps) {
+  const { saveSession, deleteSession } = useSessionMutations();
+  const isEdit = !!session;
+
+  const [date, setDate] = useState('');
+  const [status, setStatus] = useState<SessionStatus>('present');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setDate(session?.scheduled_date ?? defaultDate ?? todayKey());
+    setStatus(session?.status ?? 'present');
+    setNotes(session?.notes ?? '');
+    setConfirmDelete(false);
+  }, [open, session, defaultDate]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // Conflict guard: if a session already exists for this date, edit it.
+      let id = session?.id;
+      if (!id) {
+        const existing = await findSessionForDate(courseId, date);
+        if (existing) id = existing.id;
+      }
+      await saveSession({
+        id,
+        course_id: courseId,
+        scheduled_date: date,
+        status,
+        notes,
+      });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!session) return;
+    setSaving(true);
+    try {
+      await deleteSession(session.id);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={isEdit ? 'Edit class' : 'Add class'}
+    >
+      <div className="space-y-6 pb-2">
+        <div>
+          <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
+            Date
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full rounded-lg border-0 bg-parchment-50 px-3.5 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
+          />
+        </div>
+
+        <div>
+          <p className="mb-2 font-sans text-xs font-medium text-ink-500">Status</p>
+          <div className="grid grid-cols-3 gap-2.5">
+            {STATUS_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              const selected = status === opt.value;
+              return (
+                <motion.button
+                  key={opt.value}
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setStatus(opt.value)}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl py-4 font-sans text-sm font-medium transition-colors ${
+                    selected ? opt.active : 'bg-parchment-200 text-ink-500'
+                  }`}
+                >
+                  <Icon size={22} strokeWidth={selected ? 2.5 : 2} />
+                  {opt.label}
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="font-sans text-xs font-medium text-ink-500">
+              Notes
+            </label>
+            <span className="font-sans text-xs text-ink-300">
+              {notes.length}/{MAX_NOTES}
+            </span>
+          </div>
+          <textarea
+            value={notes}
+            maxLength={MAX_NOTES}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Optional"
+            className="w-full resize-none rounded-lg border-0 bg-parchment-50 px-3.5 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 placeholder:text-ink-300 focus:ring-2 focus:ring-inset focus:ring-sage-400"
+          />
+        </div>
+
+        <div className="space-y-3">
+          <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
+            {isEdit ? 'Save changes' : 'Add class'}
+          </Button>
+
+          {isEdit &&
+            (confirmDelete ? (
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  fullWidth
+                  onClick={handleDelete}
+                  disabled={saving}
+                >
+                  Delete
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => setConfirmDelete(true)}
+                disabled={saving}
+                className="text-rose-600"
+              >
+                <Trash2 size={16} />
+                Delete class
+              </Button>
+            ))}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
