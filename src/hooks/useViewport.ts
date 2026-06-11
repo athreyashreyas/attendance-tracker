@@ -1,45 +1,30 @@
 import { useEffect } from 'react';
 
 /**
- * Pin the CSS variable `--app-height` to the measured visible-viewport height.
+ * Track the on-screen keyboard height as the CSS variable `--keyboard-height`,
+ * via the VisualViewport API. iOS does not shrink the layout viewport when the
+ * keyboard opens, so bottom sheets use this to lift their content above it.
  *
- * iOS Safari resolves `100dvh` incorrectly on the first paint (the layout looks
- * short until a scroll nudges it) and never shrinks it for the on-screen
- * keyboard. Measuring `visualViewport.height` and updating on every viewport
- * event keeps full-height surfaces (the app shell, bottom sheets, modals)
- * exactly the size of the visible area, in any orientation and with the
- * keyboard open or closed.
+ * Full-height layout is handled purely by the locked <body> (position:fixed,
+ * inset:0) + height:100%, so no measured height variable is needed.
  */
 export function useViewport(): void {
   useEffect(() => {
     const vv = window.visualViewport;
+    if (!vv) return;
     const root = document.documentElement;
 
     const update = () => {
-      const h = vv ? vv.height : window.innerHeight;
-      root.style.setProperty('--app-height', `${Math.round(h)}px`);
-      // Keyboard height = layout viewport minus the visible viewport.
-      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       root.style.setProperty('--keyboard-height', `${Math.round(kb)}px`);
     };
 
     update();
-    // iOS settles the viewport a beat after load; nudge a couple of times.
-    const raf = requestAnimationFrame(update);
-    const timer = setTimeout(update, 300);
-
-    vv?.addEventListener('resize', update);
-    vv?.addEventListener('scroll', update);
-    window.addEventListener('orientationchange', update);
-    window.addEventListener('resize', update);
-
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
     return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(timer);
-      vv?.removeEventListener('resize', update);
-      vv?.removeEventListener('scroll', update);
-      window.removeEventListener('orientationchange', update);
-      window.removeEventListener('resize', update);
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
     };
   }, []);
 }

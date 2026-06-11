@@ -217,7 +217,7 @@ function ProjectionCallout({
   proj: TermProjection;
   threshold: number;
 }) {
-  const { remaining, mustAttend, canSkip, reachable, bestPct, worstPct } = proj;
+  const { remaining, canSkip, reachable, bestPct, worstPct } = proj;
   const left = `${remaining} class${remaining === 1 ? '' : 'es'} left this term.`;
 
   let tone: 'rose' | 'amber' | 'sage';
@@ -225,9 +225,9 @@ function ProjectionCallout({
   if (!reachable) {
     tone = 'rose';
     message = `${left} Even attending all of them you'd finish near ${bestPct}%, so ${threshold}% can't be reached now.`;
-  } else if (mustAttend > 0) {
+  } else if (canSkip === 0) {
     tone = 'amber';
-    message = `${left} Attend at least ${mustAttend} to finish at ${threshold}%. You can miss up to ${canSkip}.`;
+    message = `${left} You'll need to attend every one to finish at ${threshold}%.`;
   } else {
     tone = 'sage';
     message = `${left} You can miss up to ${canSkip} and still finish above ${threshold}%.`;

@@ -67,7 +67,6 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
             isAtRisk={stats?.isAtRisk ?? false}
             threshold={course.min_attendance_pct}
             remaining={proj?.remaining ?? 0}
-            mustAttend={proj?.mustAttend ?? 0}
             canSkip={proj?.canSkip ?? 0}
             reachable={proj?.reachable ?? true}
           />
@@ -94,7 +93,6 @@ function CourseBadge({
   isAtRisk,
   threshold,
   remaining,
-  mustAttend,
   canSkip,
   reachable,
 }: {
@@ -102,7 +100,6 @@ function CourseBadge({
   isAtRisk: boolean;
   threshold: number;
   remaining: number;
-  mustAttend: number;
   canSkip: number;
   reachable: boolean;
 }) {
@@ -122,10 +119,10 @@ function CourseBadge({
         </Badge>
       );
     }
-    if (mustAttend > 0) {
+    if (canSkip === 0) {
       return (
         <Badge tone="amber">
-          Attend {mustAttend} of {remaining} left
+          Attend all {remaining} left
         </Badge>
       );
     }

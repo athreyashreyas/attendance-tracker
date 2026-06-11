@@ -135,7 +135,7 @@ export function CourseForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Victorian Literature"
-          autoFocus={!isEdit}
+          autoComplete="off"
         />
 
         <div>

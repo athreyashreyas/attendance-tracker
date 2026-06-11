@@ -10,8 +10,6 @@
     --safe-bottom: env(safe-area-inset-bottom);
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
-    /* Overwritten with the measured visible-viewport height by useViewport(). */
-    --app-height: 100dvh;
     --keyboard-height: 0px;
   }
 
