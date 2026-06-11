@@ -7,7 +7,7 @@ import { Input } from '../ui/Input';
 import { CourseColorPicker } from './CourseColorPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
-import { WEEK_ORDER } from '../../utils/dates';
+import { WEEK_ORDER, formatLongDate } from '../../utils/dates';
 import type { Course, ScheduleDay } from '../../types';
 
 const DAY_SHORT: Record<number, string> = {
@@ -80,6 +80,18 @@ export function CourseForm({
     }
     if (start && end && end < start) {
       setError('The last class should be on or after the first.');
+      return;
+    }
+    if (start && semesterStart && start < semesterStart) {
+      setError(
+        `Classes can't start before the semester (${formatLongDate(semesterStart)}).`
+      );
+      return;
+    }
+    if (end && semesterEnd && end > semesterEnd) {
+      setError(
+        `Classes can't end after the semester (${formatLongDate(semesterEnd)}).`
+      );
       return;
     }
     setSaving(true);
@@ -163,7 +175,7 @@ export function CourseForm({
               Class dates
             </p>
             <span className="font-sans text-[11px] text-ink-300">
-              Used to count classes left
+              Within the semester
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
