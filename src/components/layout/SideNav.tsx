@@ -5,7 +5,7 @@ import { NAV_ITEMS } from './navItems';
 /** Sidebar rail, shown at md+ (iPad, phone landscape); hidden on phone portrait. */
 export function SideNav() {
   return (
-    <aside className="hidden shrink-0 border-r border-parchment-300 bg-parchment-50/70 pl-safe pt-safe md:flex md:h-dvh md:w-60 md:flex-col md:px-4 md:py-6">
+    <aside className="hidden shrink-0 border-r border-parchment-300 bg-parchment-50/70 pl-safe pt-safe md:flex md:w-60 md:flex-col md:px-4 md:py-6">
       <div className="mb-8 px-3">
         <span className="font-serif text-2xl text-ink-900">Attend</span>
       </div>

@@ -23,6 +23,8 @@ export interface Course {
   color: string; // hex color
   schedule_days: ScheduleDay[];
   min_attendance_pct: number;
+  start_date: string | null; // 'YYYY-MM-DD'; null falls back to the semester
+  end_date: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

@@ -135,6 +135,8 @@ export function DashboardPage() {
         onClose={() => setFormOpen(false)}
         semesterId={semester?.id ?? ''}
         course={editing}
+        semesterStart={semester?.start_date}
+        semesterEnd={semester?.end_date}
       />
     </div>
   );

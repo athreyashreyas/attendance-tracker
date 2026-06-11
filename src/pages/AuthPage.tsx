@@ -6,7 +6,7 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-dvh flex-col justify-center bg-parchment-100 px-6 pb-safe pt-safe">
+    <div className="flex min-h-[var(--app-height)] flex-col justify-center bg-parchment-100 px-6 pb-safe pt-safe">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

@@ -113,11 +113,15 @@ export function useSessionMutations() {
     startKey: string,
     endKey: string
   ): Promise<number> {
-    const start = fromDateKey(startKey);
-    const end = fromDateKey(endKey);
     let count = 0;
     for (const course of courses) {
-      const dates = generateExpectedDates(course, start, end);
+      // Clamp the break to the course's own schedule window.
+      const cStart = course.start_date ?? startKey;
+      const cEnd = course.end_date ?? endKey;
+      const rangeStart = fromDateKey(startKey > cStart ? startKey : cStart);
+      const rangeEnd = fromDateKey(endKey < cEnd ? endKey : cEnd);
+      if (rangeStart > rangeEnd) continue;
+      const dates = generateExpectedDates(course, rangeStart, rangeEnd);
       for (const d of dates) {
         const key = toDateKey(d);
         const existing = await findSessionForDate(course.id, key);

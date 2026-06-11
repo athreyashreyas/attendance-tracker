@@ -34,12 +34,9 @@ export function useTermProjection(
 
   return useMemo(() => {
     if (!course || !semester) return null;
-    return computeTermProjection(
-      course,
-      sessions ?? [],
-      semester.start_date,
-      semester.end_date,
-      todayKey()
-    );
+    // The course's own dates win; fall back to the semester's range.
+    const start = course.start_date ?? semester.start_date;
+    const end = course.end_date ?? semester.end_date;
+    return computeTermProjection(course, sessions ?? [], start, end, todayKey());
   }, [course, semester, sessions]);
 }

@@ -21,7 +21,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex flex-col justify-end"
+          className="fixed inset-x-0 top-0 z-50 flex h-[var(--app-height)] flex-col justify-end"
           initial="hidden"
           animate="visible"
           exit="hidden"
@@ -32,10 +32,10 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
           />
           <motion.div
-            className="scroll-ios relative max-h-[85dvh] overflow-y-auto rounded-t-sheet bg-parchment-50 px-5 pt-3 shadow-2xl safe-bottom"
+            className="scroll-ios relative max-h-full overflow-y-auto rounded-t-sheet bg-parchment-50 pt-3 shadow-2xl safe-bottom"
             style={{
-              marginBottom: 'var(--keyboard-height, 0px)',
-              transition: 'margin-bottom 0.2s ease',
+              paddingLeft: 'max(1.25rem, var(--safe-left))',
+              paddingRight: 'max(1.25rem, var(--safe-right))',
             }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}

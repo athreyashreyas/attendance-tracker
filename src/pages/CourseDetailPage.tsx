@@ -169,8 +169,8 @@ export function CourseDetailPage() {
           <div className="rounded-card bg-parchment-50 p-4 shadow-sm">
             <AttendanceHeatmap
               course={course}
-              semesterStart={semester.start_date}
-              semesterEnd={semester.end_date}
+              semesterStart={course.start_date ?? semester.start_date}
+              semesterEnd={course.end_date ?? semester.end_date}
               sessions={sessions ?? []}
               onSelectDate={(date, session) =>
                 setSessionForm({ open: true, session: session ?? null, date })
@@ -203,6 +203,8 @@ export function CourseDetailPage() {
         onClose={() => setEditCourse(false)}
         semesterId={course.semester_id}
         course={course}
+        semesterStart={semester?.start_date}
+        semesterEnd={semester?.end_date}
       />
     </div>
   );

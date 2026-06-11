@@ -27,6 +27,8 @@ create table public.courses (
   color               text    not null default '#4F7942',
   schedule_days       int[]   default '{}' not null,
   min_attendance_pct  int     default 75 not null check (min_attendance_pct between 0 and 100),
+  start_date          date,
+  end_date            date,
   created_at          timestamptz default now() not null,
   updated_at          timestamptz default now() not null,
   deleted_at          timestamptz

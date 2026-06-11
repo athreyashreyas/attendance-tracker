@@ -38,6 +38,8 @@ export interface CourseInput {
   color: string;
   schedule_days: ScheduleDay[];
   min_attendance_pct: number;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 export function useCourseMutations() {
@@ -61,6 +63,8 @@ export function useCourseMutations() {
       color: input.color,
       schedule_days: input.schedule_days,
       min_attendance_pct: input.min_attendance_pct,
+      start_date: input.start_date ?? null,
+      end_date: input.end_date ?? null,
       created_at: existing?.created_at ?? now,
       updated_at: now,
       deleted_at: null,

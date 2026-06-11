@@ -25,9 +25,18 @@ interface CourseFormProps {
   onClose: () => void;
   semesterId: string;
   course?: Course | null;
+  semesterStart?: string;
+  semesterEnd?: string;
 }
 
-export function CourseForm({ open, onClose, semesterId, course }: CourseFormProps) {
+export function CourseForm({
+  open,
+  onClose,
+  semesterId,
+  course,
+  semesterStart,
+  semesterEnd,
+}: CourseFormProps) {
   const { saveCourse, deleteCourse } = useCourseMutations();
   const isEdit = !!course;
 
@@ -35,6 +44,8 @@ export function CourseForm({ open, onClose, semesterId, course }: CourseFormProp
   const [color, setColor] = useState<string>(DEFAULT_COURSE_COLOR);
   const [days, setDays] = useState<ScheduleDay[]>([]);
   const [minPct, setMinPct] = useState(75);
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -46,9 +57,11 @@ export function CourseForm({ open, onClose, semesterId, course }: CourseFormProp
     setColor(course?.color ?? DEFAULT_COURSE_COLOR);
     setDays(course?.schedule_days ?? []);
     setMinPct(course?.min_attendance_pct ?? 75);
+    setStart(course?.start_date ?? semesterStart ?? '');
+    setEnd(course?.end_date ?? semesterEnd ?? '');
     setError(null);
     setConfirmDelete(false);
-  }, [open, course]);
+  }, [open, course, semesterStart, semesterEnd]);
 
   function toggleDay(day: ScheduleDay) {
     setDays((prev) =>
@@ -65,6 +78,10 @@ export function CourseForm({ open, onClose, semesterId, course }: CourseFormProp
       setError('Pick at least one class day.');
       return;
     }
+    if (start && end && end < start) {
+      setError('The last class should be on or after the first.');
+      return;
+    }
     setSaving(true);
     try {
       await saveCourse({
@@ -74,6 +91,8 @@ export function CourseForm({ open, onClose, semesterId, course }: CourseFormProp
         color,
         schedule_days: [...days].sort((a, b) => a - b),
         min_attendance_pct: minPct,
+        start_date: start || null,
+        end_date: end || null,
       });
       onClose();
     } finally {
@@ -135,6 +154,41 @@ export function CourseForm({ open, onClose, semesterId, course }: CourseFormProp
                 </motion.button>
               );
             })}
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="font-sans text-xs font-medium text-ink-500">
+              Class dates
+            </p>
+            <span className="font-sans text-[11px] text-ink-300">
+              Used to count classes left
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-sans text-[11px] text-ink-500">
+                First class
+              </label>
+              <input
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-sans text-[11px] text-ink-500">
+                Last class
+              </label>
+              <input
+                type="date"
+                value={end}
+                onChange={(e) => setEnd(e.target.value)}
+                className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
+              />
+            </div>
           </div>
         </div>
 

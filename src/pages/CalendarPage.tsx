@@ -74,10 +74,10 @@ export function CalendarPage() {
   const plannedByDate = useMemo(() => {
     const map = new Map<string, Course[]>();
     if (!semester) return map;
-    const start = fromDateKey(semester.start_date);
-    const end = fromDateKey(semester.end_date);
     for (const c of courses ?? []) {
       if (filter && c.id !== filter) continue;
+      const start = fromDateKey(c.start_date ?? semester.start_date);
+      const end = fromDateKey(c.end_date ?? semester.end_date);
       for (const d of generateExpectedDates(c, start, end)) {
         const key = toDateKey(d);
         if (recordedKeys.has(`${c.id}|${key}`)) continue;
