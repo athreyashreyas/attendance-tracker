@@ -2,9 +2,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
-import { nowIso } from '../utils/dates';
+import { nowIso, toDateKey, fromDateKey } from '../utils/dates';
 import { toRemote } from '../utils/records';
-import type { Session, SessionStatus } from '../types';
+import { generateExpectedDates } from '../lib/calculations';
+import type { Course, Session, SessionStatus } from '../types';
 
 async function loadSessions(courseId: string): Promise<Session[]> {
   const sessions = await db.sessions
@@ -101,6 +102,39 @@ export function useSessionMutations() {
     });
   }
 
+  /**
+   * Cancel every scheduled class between two dates (inclusive) for the given
+   * courses — a holiday, break, or exam week. Existing present/absent marks are
+   * left untouched; only planned (unrecorded) or already-cancelled dates are set
+   * to cancelled. Returns the number of classes cancelled.
+   */
+  async function markBreak(
+    courses: Course[],
+    startKey: string,
+    endKey: string
+  ): Promise<number> {
+    const start = fromDateKey(startKey);
+    const end = fromDateKey(endKey);
+    let count = 0;
+    for (const course of courses) {
+      const dates = generateExpectedDates(course, start, end);
+      for (const d of dates) {
+        const key = toDateKey(d);
+        const existing = await findSessionForDate(course.id, key);
+        if (existing && existing.status !== 'cancelled') continue; // keep real marks
+        if (existing && existing.status === 'cancelled') continue; // already off
+        await saveSession({
+          course_id: course.id,
+          scheduled_date: key,
+          status: 'cancelled',
+        });
+        count += 1;
+      }
+    }
+    invalidate();
+    return count;
+  }
+
   async function deleteSession(id: string): Promise<void> {
     const session = await db.sessions.get(id);
     if (!session) return;
@@ -113,5 +147,5 @@ export function useSessionMutations() {
     invalidate();
   }
 
-  return { saveSession, markSession, deleteSession };
+  return { saveSession, markSession, markBreak, deleteSession };
 }

@@ -1,4 +1,11 @@
-import type { Session, AttendanceStats, Course, ScheduleDay } from '../types';
+import type {
+  Session,
+  AttendanceStats,
+  Course,
+  ScheduleDay,
+  TermProjection,
+} from '../types';
+import { format } from 'date-fns';
 
 /**
  * Core attendance percentage and threshold calculations.
@@ -51,6 +58,64 @@ export function computeAttendanceStats(
     canMissMore: Math.max(canMissMore, 0),
     needToAttend,
     isAtRisk: total > 0 && pct < threshold,
+  };
+}
+
+/**
+ * Project attendance across the whole term, accounting for classes still to
+ * come. "Remaining" = future scheduled dates (today onward, within the term)
+ * that have no recorded session yet. Cancelled classes are never counted.
+ */
+export function computeTermProjection(
+  course: Course,
+  sessions: Session[],
+  termStart: string,
+  termEnd: string,
+  today: string
+): TermProjection {
+  const active = sessions.filter((s) => !s.deleted_at);
+  const present = active.filter((s) => s.status === 'present').length;
+  const absent = active.filter((s) => s.status === 'absent').length;
+
+  const recordedDates = new Set(active.map((s) => s.scheduled_date));
+
+  // Future scheduled dates with nothing recorded yet.
+  const expected = generateExpectedDates(
+    course,
+    new Date(`${termStart}T00:00:00`),
+    new Date(`${termEnd}T00:00:00`)
+  );
+  let remaining = 0;
+  for (const d of expected) {
+    const key = format(d, 'yyyy-MM-dd');
+    if (key >= today && !recordedDates.has(key)) remaining += 1;
+  }
+
+  const threshold = course.min_attendance_pct;
+  const projectedTotal = present + absent + remaining;
+  const neededAttended = Math.ceil((threshold / 100) * projectedTotal);
+  const reachable = present + remaining >= neededAttended;
+  const mustAttend = reachable
+    ? Math.min(Math.max(neededAttended - present, 0), remaining)
+    : remaining;
+  const canSkip = reachable ? remaining - mustAttend : 0;
+
+  const bestPct =
+    projectedTotal > 0
+      ? Math.round(((present + remaining) / projectedTotal) * 1000) / 10
+      : 0;
+  const worstPct =
+    projectedTotal > 0 ? Math.round((present / projectedTotal) * 1000) / 10 : 0;
+
+  return {
+    courseId: course.id,
+    remaining,
+    projectedTotal,
+    mustAttend,
+    canSkip,
+    reachable,
+    bestPct,
+    worstPct,
   };
 }
 

@@ -29,3 +29,6 @@ dev-dist
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code transient state
+.claude/scheduled_tasks.lock

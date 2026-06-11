@@ -4,18 +4,20 @@ import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { ProgressRing } from '../ui/ProgressRing';
 import { Badge } from '../ui/Badge';
-import { useAttendanceStats } from '../../hooks/useAttendanceStats';
+import { useAttendanceStats, useTermProjection } from '../../hooks/useAttendanceStats';
 import { listItem } from '../../lib/motion';
-import type { Course } from '../../types';
+import type { Course, Semester } from '../../types';
 
 interface CourseCardProps {
   course: Course;
+  semester: Semester | null;
   onEdit: (course: Course) => void;
 }
 
-export function CourseCard({ course, onEdit }: CourseCardProps) {
+export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
   const navigate = useNavigate();
   const stats = useAttendanceStats(course);
+  const proj = useTermProjection(course, semester);
 
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
@@ -38,7 +40,6 @@ export function CourseCard({ course, onEdit }: CourseCardProps) {
   }
 
   const hasSessions = stats !== null && stats.total > 0;
-  const canMiss = stats && Number.isFinite(stats.canMissMore) ? stats.canMissMore : 0;
 
   return (
     <motion.div
@@ -61,22 +62,15 @@ export function CourseCard({ course, onEdit }: CourseCardProps) {
           {course.name}
         </h3>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {!hasSessions && (
-            <span className="font-sans text-xs text-ink-300">
-              No classes recorded yet
-            </span>
-          )}
-          {hasSessions && stats!.isAtRisk && (
-            <Badge tone="rose" icon={<AlertTriangle size={12} />}>
-              Below {stats!.threshold}%
-            </Badge>
-          )}
-          {hasSessions && !stats!.isAtRisk && canMiss > 0 && (
-            <Badge tone="neutral">Can miss {canMiss} more</Badge>
-          )}
-          {hasSessions && stats!.needToAttend > 0 && Number.isFinite(stats!.needToAttend) && (
-            <Badge tone="amber">Attend {stats!.needToAttend} more to recover</Badge>
-          )}
+          <CourseBadge
+            hasSessions={hasSessions}
+            isAtRisk={stats?.isAtRisk ?? false}
+            threshold={course.min_attendance_pct}
+            remaining={proj?.remaining ?? 0}
+            mustAttend={proj?.mustAttend ?? 0}
+            canSkip={proj?.canSkip ?? 0}
+            reachable={proj?.reachable ?? true}
+          />
         </div>
       </div>
 
@@ -93,4 +87,62 @@ export function CourseCard({ course, onEdit }: CourseCardProps) {
       </ProgressRing>
     </motion.div>
   );
+}
+
+function CourseBadge({
+  hasSessions,
+  isAtRisk,
+  threshold,
+  remaining,
+  mustAttend,
+  canSkip,
+  reachable,
+}: {
+  hasSessions: boolean;
+  isAtRisk: boolean;
+  threshold: number;
+  remaining: number;
+  mustAttend: number;
+  canSkip: number;
+  reachable: boolean;
+}) {
+  if (!hasSessions && remaining === 0) {
+    return (
+      <span className="font-sans text-xs text-ink-300">
+        No classes recorded yet
+      </span>
+    );
+  }
+
+  if (remaining > 0) {
+    if (!reachable) {
+      return (
+        <Badge tone="rose" icon={<AlertTriangle size={12} />}>
+          Can&apos;t reach {threshold}%
+        </Badge>
+      );
+    }
+    if (mustAttend > 0) {
+      return (
+        <Badge tone="amber">
+          Attend {mustAttend} of {remaining} left
+        </Badge>
+      );
+    }
+    return (
+      <Badge tone="green">
+        Can miss {canSkip} of {remaining} left
+      </Badge>
+    );
+  }
+
+  // Term finished (no classes left to come)
+  if (isAtRisk) {
+    return (
+      <Badge tone="rose" icon={<AlertTriangle size={12} />}>
+        Finished below {threshold}%
+      </Badge>
+    );
+  }
+  return <Badge tone="green">Above {threshold}%</Badge>;
 }

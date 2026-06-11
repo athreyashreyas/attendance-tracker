@@ -12,10 +12,10 @@ import { AttendanceHeatmap } from '../components/calendar/AttendanceHeatmap';
 import { useCourse } from '../hooks/useCourses';
 import { useSessions } from '../hooks/useSessions';
 import { useSemesters } from '../hooks/useSemesters';
-import { useAttendanceStats } from '../hooks/useAttendanceStats';
+import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
-import type { Session } from '../types';
+import type { Session, TermProjection } from '../types';
 
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +37,7 @@ export function CourseDetailPage() {
     () => semesters?.find((s) => s.id === course?.semester_id) ?? null,
     [semesters, course]
   );
+  const proj = useTermProjection(course, semester);
 
   const grouped = useMemo(() => {
     const groups: { label: string; items: Session[] }[] = [];
@@ -120,8 +121,12 @@ export function CourseDetailPage() {
         </div>
       </div>
 
-      {/* Threshold callout */}
-      {stats && stats.total > 0 && <ThresholdCallout stats={stats} />}
+      {/* Threshold / projection callout */}
+      {proj && proj.remaining > 0 ? (
+        <ProjectionCallout proj={proj} threshold={course.min_attendance_pct} />
+      ) : (
+        stats && stats.total > 0 && <ThresholdCallout stats={stats} />
+      )}
 
       {/* Session list */}
       <div className="mt-6">
@@ -199,6 +204,46 @@ export function CourseDetailPage() {
         semesterId={course.semester_id}
         course={course}
       />
+    </div>
+  );
+}
+
+function ProjectionCallout({
+  proj,
+  threshold,
+}: {
+  proj: TermProjection;
+  threshold: number;
+}) {
+  const { remaining, mustAttend, canSkip, reachable, bestPct, worstPct } = proj;
+  const left = `${remaining} class${remaining === 1 ? '' : 'es'} left this term.`;
+
+  let tone: 'rose' | 'amber' | 'sage';
+  let message: string;
+  if (!reachable) {
+    tone = 'rose';
+    message = `${left} Even attending all of them you'd finish near ${bestPct}%, so ${threshold}% can't be reached now.`;
+  } else if (mustAttend > 0) {
+    tone = 'amber';
+    message = `${left} Attend at least ${mustAttend} to finish at ${threshold}%. You can miss up to ${canSkip}.`;
+  } else {
+    tone = 'sage';
+    message = `${left} You can miss up to ${canSkip} and still finish above ${threshold}%.`;
+  }
+
+  const toneClasses = {
+    rose: 'bg-rose-100 text-rose-600',
+    amber: 'bg-amber-100 text-amber-600',
+    sage: 'bg-sage-100 text-sage-700',
+  } as const;
+
+  return (
+    <div className={`mt-4 rounded-card px-4 py-3 ${toneClasses[tone]}`}>
+      <p className="font-sans text-sm font-medium">{message}</p>
+      <p className="mt-1 font-sans text-xs opacity-80">
+        Attend everything and you finish at {bestPct}%. Attend nothing more and
+        you finish at {worstPct}%.
+      </p>
     </div>
   );
 }

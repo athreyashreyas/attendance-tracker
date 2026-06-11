@@ -9,9 +9,14 @@ import {
 } from 'date-fns';
 import { toDateKey, DAY_LABELS_SHORT } from '../../utils/dates';
 
+export interface DayDot {
+  color: string;
+  recorded: boolean; // true = a marked class, false = a planned (upcoming) class
+}
+
 interface MonthCalendarProps {
   month: Date;
-  getDots: (dateKey: string) => string[];
+  getDots: (dateKey: string) => DayDot[];
   onSelectDay: (dateKey: string) => void;
 }
 
@@ -59,11 +64,15 @@ export function MonthCalendar({ month, getDots, onSelectDay }: MonthCalendarProp
                 {day.getDate()}
               </span>
               <span className="flex h-1.5 items-center gap-0.5">
-                {dots.slice(0, 4).map((color, i) => (
+                {dots.slice(0, 4).map((dot, i) => (
                   <span
                     key={i}
                     className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: color }}
+                    style={
+                      dot.recorded
+                        ? { backgroundColor: dot.color }
+                        : { boxShadow: `inset 0 0 0 1.5px ${dot.color}` }
+                    }
                   />
                 ))}
               </span>

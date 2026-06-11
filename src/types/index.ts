@@ -64,6 +64,17 @@ export interface AttendanceStats {
   isAtRisk: boolean; // percentage < threshold
 }
 
+export interface TermProjection {
+  courseId: string;
+  remaining: number; // future planned classes still to come this term
+  projectedTotal: number; // present + absent + remaining (cancelled excluded)
+  mustAttend: number; // of the remaining, how many must be attended to hit threshold
+  canSkip: number; // of the remaining, how many can still be missed (0 if unreachable)
+  reachable: boolean; // can the threshold still be reached by attending all remaining?
+  bestPct: number; // final % if every remaining class is attended
+  worstPct: number; // final % if no remaining class is attended
+}
+
 export interface SyncQueueItem {
   id?: number;
   table_name: TableName;

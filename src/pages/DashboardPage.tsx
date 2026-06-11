@@ -108,7 +108,12 @@ export function DashboardPage() {
           className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
           {courses!.map((course) => (
-            <CourseCard key={course.id} course={course} onEdit={openEdit} />
+            <CourseCard
+              key={course.id}
+              course={course}
+              semester={semester}
+              onEdit={openEdit}
+            />
           ))}
         </motion.div>
       )}
