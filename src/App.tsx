@@ -10,6 +10,7 @@ import { useRealtime } from './hooks/useRealtime';
 import { useViewport } from './hooks/useViewport';
 import { QuotaToast } from './components/ui/QuotaToast';
 import { UpdateOverlay } from './components/ui/UpdateOverlay';
+import { DebugViewport } from './components/ui/DebugViewport';
 
 function AppInner() {
   const userId = useAuthStore((s) => s.session?.user?.id ?? null);
@@ -32,6 +33,7 @@ function AppInner() {
       <RouterProvider router={router} />
       <QuotaToast />
       <UpdateOverlay />
+      <DebugViewport />
     </>
   );
 }
