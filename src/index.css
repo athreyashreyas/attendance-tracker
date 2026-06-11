@@ -12,16 +12,28 @@
     --safe-right: env(safe-area-inset-right);
     /* Overwritten with the measured visible-viewport height by useViewport(). */
     --app-height: 100dvh;
+    --keyboard-height: 0px;
   }
 
   html {
+    height: 100%;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Lock the document so iOS can't rubber-band the whole page (which would slide
+     content under the status bar). Only inner regions scroll. */
   body {
     @apply bg-parchment-100 text-ink-900 font-sans;
+    position: fixed;
+    inset: 0;
+    height: 100%;
+    overflow: hidden;
     overscroll-behavior: none;
+  }
+
+  #root {
+    height: 100%;
   }
 
   /* iOS momentum scrolling */

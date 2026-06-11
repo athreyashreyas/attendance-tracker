@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { spring } from '../../lib/motion';
 
@@ -17,11 +18,14 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     if (info.offset.y > 120 || info.velocity.y > 500) onClose();
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
+        // Pinned to the true viewport bottom and rendered above the nav so the
+        // panel (and its Save button) always clears the tab bar, toolbar, and
+        // keyboard, in any orientation.
         <motion.div
-          className="fixed inset-x-0 top-0 z-50 flex h-[var(--app-height)] flex-col justify-end"
+          className="fixed inset-0 z-[100] flex flex-col justify-end"
           initial="hidden"
           animate="visible"
           exit="hidden"
@@ -32,10 +36,12 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
           />
           <motion.div
-            className="scroll-ios relative max-h-full overflow-y-auto rounded-t-sheet bg-parchment-50 pt-3 shadow-2xl safe-bottom"
+            className="scroll-ios relative max-h-[90%] overflow-y-auto rounded-t-sheet bg-parchment-50 pt-3 shadow-2xl safe-bottom"
             style={{
+              marginBottom: 'var(--keyboard-height, 0px)',
               paddingLeft: 'max(1.25rem, var(--safe-left))',
               paddingRight: 'max(1.25rem, var(--safe-right))',
+              transition: 'margin-bottom 0.2s ease',
             }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
@@ -52,6 +58,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

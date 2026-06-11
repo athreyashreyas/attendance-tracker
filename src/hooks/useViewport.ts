@@ -18,6 +18,9 @@ export function useViewport(): void {
     const update = () => {
       const h = vv ? vv.height : window.innerHeight;
       root.style.setProperty('--app-height', `${Math.round(h)}px`);
+      // Keyboard height = layout viewport minus the visible viewport.
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      root.style.setProperty('--keyboard-height', `${Math.round(kb)}px`);
     };
 
     update();

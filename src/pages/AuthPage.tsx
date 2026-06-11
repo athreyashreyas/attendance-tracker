@@ -6,12 +6,12 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-[var(--app-height)] flex-col justify-center bg-parchment-100 px-6 pb-safe pt-safe">
+    <div className="scroll-ios flex h-[var(--app-height)] flex-col overflow-y-auto bg-parchment-100">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mx-auto w-full max-w-sm"
+        className="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center px-6 py-12 pb-safe pt-safe"
       >
         <div className="mb-8 text-center">
           <h1 className="font-serif text-4xl text-ink-900">Attend</h1>
