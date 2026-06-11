@@ -5,7 +5,7 @@ import { NAV_ITEMS } from './navItems';
 /** Bottom tab bar for phone portrait only (hidden at md+, where the rail takes over). */
 export function BottomNav() {
   return (
-    <nav className="bottom-nav shrink-0 border-t border-parchment-300 bg-parchment-100 md:hidden">
+    <nav className="bottom-nav shrink-0 border-t border-parchment-200 bg-parchment-50 shadow-[0_-2px_10px_rgba(26,26,24,0.06)] md:hidden">
       <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1.5">
         {NAV_ITEMS.map(({ to, label, icon: Icon, accent }) => (
           <NavLink
