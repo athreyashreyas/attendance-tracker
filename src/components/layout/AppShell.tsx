@@ -10,7 +10,7 @@ import { SideNav } from './SideNav';
  */
 export function AppShell() {
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-parchment-100 md:flex-row">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-parchment-100 md:flex-row">
       <SideNav />
       <main className="flex min-h-0 flex-1 flex-col pt-safe">
         <div className="scroll-ios min-h-0 flex-1 overflow-y-auto">

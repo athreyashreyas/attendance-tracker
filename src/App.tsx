@@ -9,6 +9,7 @@ import { syncEngine } from './lib/sync';
 import { useRealtime } from './hooks/useRealtime';
 import { useViewport } from './hooks/useViewport';
 import { QuotaToast } from './components/ui/QuotaToast';
+import { UpdateOverlay } from './components/ui/UpdateOverlay';
 
 function AppInner() {
   const userId = useAuthStore((s) => s.session?.user?.id ?? null);
@@ -30,6 +31,7 @@ function AppInner() {
     <>
       <RouterProvider router={router} />
       <QuotaToast />
+      <UpdateOverlay />
     </>
   );
 }
