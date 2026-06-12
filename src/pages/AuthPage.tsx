@@ -6,10 +6,7 @@ export function AuthPage() {
   const navigate = useNavigate();
 
   return (
-    <div
-      className="scroll-ios fixed inset-x-0 flex flex-col overflow-y-auto bg-parchment-100"
-      style={{ top: 'var(--vvt, 0px)', height: 'var(--vvh, 100lvh)' }}
-    >
+    <div className="scroll-ios flex h-full flex-col overflow-y-auto bg-parchment-100">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

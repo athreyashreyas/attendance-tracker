@@ -11,21 +11,21 @@
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
     --keyboard-height: 0px;
-    /* Measured visible viewport (set by useViewport); fall back to full screen. */
-    --vvh: 100lvh;
-    --vvt: 0px;
   }
 
+  /* iOS reports 100dvh as exactly the screen height minus the top safe-area
+     inset (a quirk of how the visual viewport is measured in standalone PWAs).
+     Adding the inset back gives the true full-screen height at rest, while
+     dvh's built-in keyboard-aware shrinking still applies on top of that. Both
+     terms are native, per-device, per-state CSS values, no measurement needed. */
   html {
-    height: 100%;
+    height: calc(100dvh + env(safe-area-inset-top));
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
   }
 
   /* Lock the document so iOS can't rubber-band the whole page (which would slide
-     content under the status bar). Only inner regions scroll. Plain
-     overflow:hidden + height:100% keeps the height chain intact so the bottom
-     nav reaches the true screen bottom (position:fixed on body collapses it). */
+     content under the status bar). Only inner regions scroll. */
   body {
     @apply bg-parchment-100 text-ink-900 font-sans;
     height: 100%;
