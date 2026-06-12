@@ -11,6 +11,9 @@
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
     --keyboard-height: 0px;
+    /* Measured visible viewport (set by useViewport); fall back to full screen. */
+    --vvh: 100lvh;
+    --vvt: 0px;
   }
 
   html {
