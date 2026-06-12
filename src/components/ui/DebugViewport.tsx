@@ -8,14 +8,18 @@ export function DebugViewport() {
   const [info, setInfo] = useState('measuring…');
 
   useEffect(() => {
-    const probeBottom = document.createElement('div');
-    probeBottom.style.cssText =
-      'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);';
-    const probeTop = document.createElement('div');
-    probeTop.style.cssText =
-      'position:fixed;left:0;top:0;width:0;height:env(safe-area-inset-top);';
-    document.body.appendChild(probeBottom);
-    document.body.appendChild(probeTop);
+    const mk = (h: string) => {
+      const d = document.createElement('div');
+      d.style.cssText = `position:fixed;left:0;top:0;width:0;height:${h};`;
+      document.body.appendChild(d);
+      return d;
+    };
+    const probeTop = mk('env(safe-area-inset-top)');
+    const probeBottom = mk('env(safe-area-inset-bottom)');
+    const pVh = mk('100vh');
+    const pDvh = mk('100dvh');
+    const pSvh = mk('100svh');
+    const pLvh = mk('100lvh');
 
     const update = () => {
       const vv = window.visualViewport;
@@ -24,10 +28,12 @@ export function DebugViewport() {
           `scr=${window.screen.height}`,
           `iH=${window.innerHeight}`,
           `vvH=${vv ? Math.round(vv.height) : '-'}`,
-          `cH=${document.documentElement.clientHeight}`,
+          `vh=${pVh.offsetHeight}`,
+          `dvh=${pDvh.offsetHeight}`,
+          `svh=${pSvh.offsetHeight}`,
+          `lvh=${pLvh.offsetHeight}`,
           `st=${probeTop.offsetHeight}`,
           `sb=${probeBottom.offsetHeight}`,
-          `dpr=${window.devicePixelRatio}`,
         ].join(' ')
       );
     };
@@ -40,8 +46,7 @@ export function DebugViewport() {
       window.clearInterval(id);
       window.visualViewport?.removeEventListener('resize', update);
       window.visualViewport?.removeEventListener('scroll', update);
-      probeBottom.remove();
-      probeTop.remove();
+      [probeTop, probeBottom, pVh, pDvh, pSvh, pLvh].forEach((p) => p.remove());
     };
   }, []);
 

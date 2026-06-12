@@ -28,7 +28,7 @@ import { exportAllDataAsJSON, exportCourseAsCSV } from '../lib/export';
 import { formatLongDate, toDateKey } from '../utils/dates';
 import type { Semester } from '../types';
 
-const APP_VERSION = '0.4.1';
+const APP_VERSION = '0.4.2';
 
 export function SettingsPage() {
   const navigate = useNavigate();
