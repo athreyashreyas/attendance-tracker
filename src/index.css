@@ -13,13 +13,15 @@
     --keyboard-height: 0px;
   }
 
-  /* iOS reports 100dvh as exactly the screen height minus the top safe-area
+  /* iOS reports 100dvh as roughly the screen height minus the top safe-area
      inset (a quirk of how the visual viewport is measured in standalone PWAs).
      Adding the inset back gives the true full-screen height at rest, while
-     dvh's built-in keyboard-aware shrinking still applies on top of that. Both
-     terms are native, per-device, per-state CSS values, no measurement needed. */
+     dvh's built-in keyboard-aware shrinking still applies on top of that.
+     Cap with 100lvh (the true screen height) so any rounding discrepancy in
+     that estimate can never push the shell past the real screen edge. All
+     three terms are native, per-device, per-state CSS values. */
   html {
-    height: calc(100dvh + env(safe-area-inset-top));
+    height: min(calc(100dvh + env(safe-area-inset-top)), 100lvh);
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
   }
