@@ -80,6 +80,12 @@ export function AttendanceHeatmap({
               content: '×',
               faded: false,
             };
+          } else if (session?.status === 'planned') {
+            cell = {
+              style: { backgroundColor: hexToRgba(course.color, 0.12) },
+              content: '',
+              faded: false,
+            };
           } else if (scheduled) {
             cell = {
               style: { backgroundColor: hexToRgba(course.color, 0.12) },

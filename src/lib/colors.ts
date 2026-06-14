@@ -1,23 +1,26 @@
+// A muted spectrum, spaced around the wheel so every swatch is clearly its own,
+// while staying soft enough to sit warmly on the parchment theme.
 export const COURSE_COLORS = [
   { label: 'Sage', hex: '#4F7942' },
-  { label: 'Slate', hex: '#4A6B8A' },
-  { label: 'Amber', hex: '#B8782A' },
-  { label: 'Rose', hex: '#9B4A6B' },
-  { label: 'Teal', hex: '#2A8A7B' },
-  { label: 'Plum', hex: '#6B4A9B' },
-  { label: 'Terracotta', hex: '#A85B3E' },
+  { label: 'Emerald', hex: '#2F8062' },
+  { label: 'Teal', hex: '#2E8A8A' },
+  { label: 'Ocean', hex: '#357F9B' },
+  { label: 'Blue', hex: '#3C5F9A' },
+  { label: 'Indigo', hex: '#4A4E94' },
+  { label: 'Violet', hex: '#6A4AA0' },
+  { label: 'Plum', hex: '#8A3F7A' },
+  { label: 'Rose', hex: '#A8436A' },
+  { label: 'Crimson', hex: '#B23B43' },
+  { label: 'Terracotta', hex: '#AF573C' },
+  { label: 'Amber', hex: '#BE7A2E' },
+  { label: 'Marigold', hex: '#C29A24' },
+  { label: 'Olive', hex: '#83863A' },
   { label: 'Graphite', hex: '#4A4A4A' },
-  { label: 'Olive', hex: '#7A7A33' },
-  { label: 'Ocean', hex: '#2F6E8F' },
-  { label: 'Marigold', hex: '#C99A2E' },
-  { label: 'Mulberry', hex: '#7E3B5C' },
-  { label: 'Pine', hex: '#356859' },
-  { label: 'Indigo', hex: '#46508C' },
-  { label: 'Clay', hex: '#9C5C44' },
-  { label: 'Storm', hex: '#5A6470' },
+  { label: 'Storm', hex: '#64707E' },
 ] as const;
 
-export const DEFAULT_COURSE_COLOR = COURSE_COLORS[0].hex;
+// Sage is the brand tone; keep it the default regardless of array order.
+export const DEFAULT_COURSE_COLOR = '#4F7942';
 
 export const STATUS_COLORS = {
   green: '#4F7942',

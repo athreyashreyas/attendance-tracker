@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { CourseColorPicker } from './CourseColorPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
+import { db } from '../../lib/db';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
 import { WEEK_ORDER, formatLongDate } from '../../utils/dates';
 import type { Course, ScheduleDay, Semester } from '../../types';
@@ -29,6 +30,8 @@ interface CourseFormProps {
   semesters: Semester[];
   /** Which semester a brand-new class should default to (null = standalone). */
   defaultSemesterId?: string | null;
+  /** Called after the class is deleted (e.g. to navigate away from its page). */
+  onDeleted?: () => void;
 }
 
 export function CourseForm({
@@ -37,6 +40,7 @@ export function CourseForm({
   course,
   semesters,
   defaultSemesterId,
+  onDeleted,
 }: CourseFormProps) {
   const { saveCourse, deleteCourse } = useCourseMutations();
   const isEdit = !!course;
@@ -51,6 +55,7 @@ export function CourseForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [markedCount, setMarkedCount] = useState<number | null>(null);
 
   // Reset fields whenever the sheet opens for a (different) course.
   useEffect(() => {
@@ -64,7 +69,21 @@ export function CourseForm({
     setEnd(course?.end_date ?? '');
     setError(null);
     setConfirmDelete(false);
+    setMarkedCount(null);
   }, [open, course, defaultSemesterId]);
+
+  // When the user asks to delete, count how much attendance they'd lose so we
+  // can warn before removing the whole class.
+  async function askDelete() {
+    setConfirmDelete(true);
+    if (!course) return;
+    const n = await db.sessions
+      .where('course_id')
+      .equals(course.id)
+      .filter((s) => !s.deleted_at && s.status !== 'cancelled')
+      .count();
+    setMarkedCount(n);
+  }
 
   const selectedSemester = useMemo<Semester | null>(
     () => semesters.find((s) => s.id === semesterId) ?? null,
@@ -132,7 +151,8 @@ export function CourseForm({
     setSaving(true);
     try {
       await deleteCourse(course.id);
-      onClose();
+      if (onDeleted) onDeleted();
+      else onClose();
     } finally {
       setSaving(false);
     }
@@ -273,29 +293,38 @@ export function CourseForm({
 
           {isEdit &&
             (confirmDelete ? (
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => setConfirmDelete(false)}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  fullWidth
-                  onClick={handleDelete}
-                  disabled={saving}
-                >
-                  Delete class
-                </Button>
+              <div className="space-y-3 rounded-card bg-rose-50 p-3.5">
+                <p className="font-sans text-sm text-ink-700">
+                  {markedCount && markedCount > 0
+                    ? `This class has ${markedCount} marked ${
+                        markedCount === 1 ? 'session' : 'sessions'
+                      }. Deleting removes the whole class along with its schedule and all of its attendance. This can't be undone.`
+                    : "This removes the whole class and its schedule. This can't be undone."}
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={saving}
+                  >
+                    Keep class
+                  </Button>
+                  <Button
+                    variant="danger"
+                    fullWidth
+                    onClick={handleDelete}
+                    disabled={saving}
+                  >
+                    Delete anyway
+                  </Button>
+                </div>
               </div>
             ) : (
               <Button
                 variant="ghost"
                 fullWidth
-                onClick={() => setConfirmDelete(true)}
+                onClick={askDelete}
                 disabled={saving}
                 className="text-rose-600"
               >

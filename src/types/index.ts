@@ -1,4 +1,6 @@
-export type SessionStatus = 'present' | 'absent' | 'cancelled';
+// 'planned' = a class placed on the calendar but not yet marked; it counts as a
+// scheduled class to come, and is excluded from attendance totals until decided.
+export type SessionStatus = 'present' | 'absent' | 'cancelled' | 'planned';
 export type ScheduleDay = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
 export type TableName = 'semesters' | 'courses' | 'sessions';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';

@@ -12,6 +12,7 @@ const STATUS_STYLE: Record<SessionStatus, { label: string; className: string }> 
   present: { label: 'Present', className: 'bg-sage-500 text-white' },
   absent: { label: 'Absent', className: 'bg-rose-500 text-white' },
   cancelled: { label: 'Cancelled', className: 'bg-parchment-300 text-ink-500' },
+  planned: { label: 'Scheduled', className: 'bg-parchment-200 text-ink-500' },
 };
 
 export function SessionItem({ session, onEdit }: SessionItemProps) {

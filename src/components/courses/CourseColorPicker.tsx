@@ -18,10 +18,15 @@ export function CourseColorPicker({ value, onChange }: CourseColorPickerProps) {
           onClick={() => onChange(c.hex)}
           aria-label={c.label}
           aria-pressed={value === c.hex}
-          className="flex aspect-square items-center justify-center rounded-xl ring-offset-2 ring-offset-parchment-50 transition-shadow"
+          className="flex aspect-square items-center justify-center rounded-xl transition-shadow"
           style={{
             backgroundColor: c.hex,
-            boxShadow: value === c.hex ? `0 0 0 2px ${c.hex}` : undefined,
+            // Haloed ring: a parchment gap then the swatch colour, so the
+            // selected tile reads clearly without fighting the swatch.
+            boxShadow:
+              value === c.hex
+                ? `0 0 0 2px #FAF9F6, 0 0 0 4px ${c.hex}`
+                : undefined,
           }}
         >
           {value === c.hex && (

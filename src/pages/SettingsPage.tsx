@@ -177,12 +177,19 @@ export function SettingsPage() {
 
       {/* What's new */}
       <Section title="What's new">
+        <p className="mb-3 font-sans text-xs text-ink-500">
+          Releases marked{' '}
+          <span className="rounded-full bg-sage-100 px-1.5 py-0.5 text-[10px] font-semibold text-sage-700">
+            Major
+          </span>{' '}
+          add new features worth a look. The rest are fixes and small touches.
+        </p>
         <div className="space-y-2">
           {CHANGELOG.map((release, i) => (
             <ReleaseRow
               key={release.version}
               release={release}
-              defaultOpen={i === 0}
+              defaultOpen={i === 0 || !!release.major}
             />
           ))}
         </div>
@@ -239,7 +246,11 @@ function ReleaseRow({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="overflow-hidden rounded-card bg-parchment-100">
+    <div
+      className={`overflow-hidden rounded-card ${
+        release.major ? 'bg-sage-50 ring-1 ring-sage-100' : 'bg-parchment-100'
+      }`}
+    >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -249,8 +260,15 @@ function ReleaseRow({
           {release.version}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-sans text-sm font-medium text-ink-900">
-            {release.title}
+          <span className="flex items-center gap-2">
+            <span className="truncate font-sans text-sm font-medium text-ink-900">
+              {release.title}
+            </span>
+            {release.major && (
+              <span className="shrink-0 rounded-full bg-sage-500 px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-white">
+                Major
+              </span>
+            )}
           </span>
           <span className="font-sans text-xs text-ink-500">
             {formatLongDate(release.date)}

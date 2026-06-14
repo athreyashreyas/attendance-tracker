@@ -202,6 +202,7 @@ export function CourseDetailPage() {
         course={course}
         semesters={semesters ?? []}
         defaultSemesterId={course.semester_id}
+        onDeleted={() => navigate('/dashboard', { replace: true })}
       />
     </div>
   );

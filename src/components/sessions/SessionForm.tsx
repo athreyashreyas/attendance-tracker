@@ -17,6 +17,8 @@ interface SessionFormProps {
   courseId: string;
   session?: Session | null;
   defaultDate?: string;
+  /** Status a brand-new session starts on (default 'present'). */
+  defaultStatus?: SessionStatus;
 }
 
 const MAX_NOTES = 200;
@@ -27,6 +29,7 @@ export function SessionForm({
   courseId,
   session,
   defaultDate,
+  defaultStatus = 'present',
 }: SessionFormProps) {
   const { saveSession, deleteSession } = useSessionMutations();
   const isEdit = !!session;
@@ -40,10 +43,10 @@ export function SessionForm({
   useEffect(() => {
     if (!open) return;
     setDate(session?.scheduled_date ?? defaultDate ?? todayKey());
-    setStatus(session?.status ?? 'present');
+    setStatus(session?.status ?? defaultStatus);
     setNotes(session?.notes ?? '');
     setConfirmDelete(false);
-  }, [open, session, defaultDate]);
+  }, [open, session, defaultDate, defaultStatus]);
 
   async function handleSave() {
     setSaving(true);
@@ -99,7 +102,7 @@ export function SessionForm({
 
         <div>
           <p className="mb-2 font-sans text-xs font-medium text-ink-500">Status</p>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {STATUS_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               const selected = status === opt.value;
@@ -109,16 +112,19 @@ export function SessionForm({
                   type="button"
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setStatus(opt.value)}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl py-4 font-sans text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-center gap-2 rounded-xl py-3.5 font-sans text-sm font-medium transition-colors ${
                     selected ? opt.active : 'bg-parchment-200 text-ink-500'
                   }`}
                 >
-                  <Icon size={22} strokeWidth={selected ? 2.5 : 2} />
+                  <Icon size={20} strokeWidth={selected ? 2.5 : 2} />
                   {opt.label}
                 </motion.button>
               );
             })}
           </div>
+          <p className="mt-2 font-sans text-xs text-ink-300">
+            Choose &ldquo;Not yet&rdquo; to add the class now and mark it on the day.
+          </p>
         </div>
 
         <div>

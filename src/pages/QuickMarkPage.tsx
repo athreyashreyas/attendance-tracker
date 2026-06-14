@@ -29,10 +29,14 @@ export function QuickMarkPage() {
     [courses, todayDow]
   );
 
+  // Only decided sessions count as "marked"; a planned class today still needs
+  // a real present/absent/cancelled, so it stays in the deck.
   const markedToday = useMemo(() => {
     const map = new Map<string, Session>();
     for (const s of allSessions ?? []) {
-      if (s.scheduled_date === today) map.set(s.course_id, s);
+      if (s.scheduled_date === today && s.status !== 'planned') {
+        map.set(s.course_id, s);
+      }
     }
     return map;
   }, [allSessions, today]);

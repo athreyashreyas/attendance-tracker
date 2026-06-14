@@ -26,12 +26,13 @@ import {
   formatSessionDate,
   todayKey,
 } from '../utils/dates';
-import type { Course, Session } from '../types';
+import type { Course, Session, SessionStatus } from '../types';
 
 interface FormTarget {
   courseId: string;
   session: Session | null;
   date?: string;
+  defaultStatus?: SessionStatus;
 }
 
 export function CalendarPage() {
@@ -114,7 +115,9 @@ export function CalendarPage() {
     const dots: DayDot[] = [];
     for (const s of byDate.get(dateKey) ?? []) {
       const color = courseById.get(s.course_id)?.color;
-      if (color && s.status !== 'cancelled') dots.push({ color, recorded: true });
+      if (!color || s.status === 'cancelled') continue;
+      // Planned sessions read as outlined (upcoming), decided ones as filled.
+      dots.push({ color, recorded: s.status !== 'planned' });
     }
     for (const c of plannedByDate.get(dateKey) ?? []) {
       dots.push({ color: c.color, recorded: false });
@@ -127,8 +130,16 @@ export function CalendarPage() {
     setForm(target);
   }
 
-  const dayRecorded = selectedDay ? (byDate.get(selectedDay) ?? []) : [];
-  const dayPlanned = selectedDay ? (plannedByDate.get(selectedDay) ?? []) : [];
+  const daySessions = selectedDay ? (byDate.get(selectedDay) ?? []) : [];
+  const dayDecided = daySessions.filter((s) => s.status !== 'planned');
+  const dayPlannedSessions = daySessions.filter((s) => s.status === 'planned');
+  const dayPlannedRecurring = selectedDay
+    ? (plannedByDate.get(selectedDay) ?? [])
+    : [];
+  const dayHasNothing =
+    dayDecided.length === 0 &&
+    dayPlannedSessions.length === 0 &&
+    dayPlannedRecurring.length === 0;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -205,13 +216,13 @@ export function CalendarPage() {
         title={selectedDay ? formatSessionDate(selectedDay) : ''}
       >
         <div className="space-y-2 pb-2">
-          {dayRecorded.length === 0 && dayPlanned.length === 0 && (
+          {dayHasNothing && (
             <p className="py-4 text-center font-sans text-sm text-ink-500">
               Nothing scheduled on this day.
             </p>
           )}
 
-          {dayRecorded.map((s) => {
+          {dayDecided.map((s) => {
             const course = courseById.get(s.course_id);
             return (
               <button
@@ -234,7 +245,32 @@ export function CalendarPage() {
             );
           })}
 
-          {dayPlanned.map((c) => (
+          {/* Planned: ad-hoc planned sessions (tap to mark/edit) and recurring
+              scheduled classes (tap to record). */}
+          {dayPlannedSessions.map((s) => {
+            const course = courseById.get(s.course_id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => openForm({ courseId: s.course_id, session: s })}
+                className="flex w-full items-center gap-3 rounded-card border border-dashed border-parchment-300 p-3.5 text-left"
+              >
+                <span
+                  className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
+                  style={{ backgroundColor: course?.color ?? '#9B9890' }}
+                />
+                <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
+                  {course?.name ?? 'Class'}
+                </span>
+                <span className="shrink-0 font-sans text-xs text-ink-300">
+                  Tap to mark
+                </span>
+              </button>
+            );
+          })}
+
+          {dayPlannedRecurring.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -265,6 +301,9 @@ export function CalendarPage() {
               <p className="mb-2 font-sans text-xs font-medium text-ink-500">
                 Add an extra class
               </p>
+              <p className="mb-2 font-sans text-xs text-ink-300">
+                Adds it to this day unmarked, ready to record later.
+              </p>
               <div className="flex flex-wrap gap-2">
                 {courses.map((c) => (
                   <button
@@ -275,6 +314,7 @@ export function CalendarPage() {
                         courseId: c.id,
                         session: null,
                         date: selectedDay ?? undefined,
+                        defaultStatus: 'planned',
                       })
                     }
                     className="flex items-center gap-1.5 rounded-full bg-parchment-200 px-3 py-1.5 font-sans text-xs font-medium text-ink-700"
@@ -296,6 +336,7 @@ export function CalendarPage() {
           courseId={form.courseId}
           session={form.session}
           defaultDate={form.date}
+          defaultStatus={form.defaultStatus}
         />
       )}
 

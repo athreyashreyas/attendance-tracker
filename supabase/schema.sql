@@ -39,7 +39,7 @@ create table public.sessions (
   course_id       uuid    references public.courses(id) on delete cascade not null,
   user_id         uuid    references auth.users(id) on delete cascade not null,
   scheduled_date  date    not null,
-  status          text    not null check (status in ('present', 'absent', 'cancelled')),
+  status          text    not null check (status in ('present', 'absent', 'cancelled', 'planned')),
   notes           text,
   created_at      timestamptz default now() not null,
   updated_at      timestamptz default now() not null,

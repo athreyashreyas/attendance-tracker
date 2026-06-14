@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CalendarCheck } from 'lucide-react';
@@ -11,6 +11,8 @@ import { CourseCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { Fab } from '../components/ui/Fab';
 import { useCourseView } from '../hooks/useCourseView';
+import { useAllSessions } from '../hooks/useSessions';
+import { todayKey } from '../utils/dates';
 import { listContainer, spring } from '../lib/motion';
 import type { Course, ScheduleDay } from '../types';
 
@@ -21,12 +23,27 @@ export function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
 
+  const { data: allSessions } = useAllSessions();
+  const today = todayKey();
+
   const hasStandalone = allCourses.some((c) => !c.semester_id);
 
-  // "Mark today" spans every class scheduled today, regardless of the filter.
+  // Classes already settled today (present/absent/cancelled) need no marking.
+  const decidedToday = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of allSessions ?? []) {
+      if (s.scheduled_date === today && s.status !== 'planned') {
+        set.add(s.course_id);
+      }
+    }
+    return set;
+  }, [allSessions, today]);
+
+  // "Mark today" spans every class scheduled today (any filter) that still needs
+  // a mark, so cancelled or already-marked days don't keep nagging.
   const todayDow = new Date().getDay() as ScheduleDay;
-  const scheduledToday = allCourses.filter((c) =>
-    c.schedule_days.includes(todayDow)
+  const toMarkToday = allCourses.filter(
+    (c) => c.schedule_days.includes(todayDow) && !decidedToday.has(c.id)
   );
 
   // A brand-new class defaults to the semester you're currently viewing.
@@ -62,7 +79,7 @@ export function DashboardPage() {
         hasStandalone={hasStandalone}
       />
 
-      {scheduledToday.length > 0 && (
+      {toMarkToday.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -79,8 +96,8 @@ export function DashboardPage() {
                 Mark today&apos;s classes
               </p>
               <p className="font-sans text-xs text-sage-50/90">
-                {scheduledToday.length} class
-                {scheduledToday.length === 1 ? '' : 'es'} scheduled today
+                {toMarkToday.length} class
+                {toMarkToday.length === 1 ? '' : 'es'} left to mark today
               </p>
             </div>
             <span className="font-serif text-2xl">→</span>

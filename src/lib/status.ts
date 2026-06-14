@@ -1,4 +1,4 @@
-import { Check, X, CircleSlash, type LucideIcon } from 'lucide-react';
+import { Check, X, CircleSlash, Clock, type LucideIcon } from 'lucide-react';
 import type { SessionStatus } from '../types';
 
 /** Human label for each session status. */
@@ -6,6 +6,7 @@ export const STATUS_LABEL: Record<SessionStatus, string> = {
   present: 'Present',
   absent: 'Absent',
   cancelled: 'Cancelled',
+  planned: 'Scheduled',
 };
 
 /** Status picker options (icon + the active colour classes). */
@@ -22,6 +23,12 @@ export const STATUS_OPTIONS: {
     label: 'Cancelled',
     icon: CircleSlash,
     active: 'bg-ink-500 text-white',
+  },
+  {
+    value: 'planned',
+    label: 'Not yet',
+    icon: Clock,
+    active: 'bg-ink-300 text-white',
   },
 ];
 

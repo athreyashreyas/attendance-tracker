@@ -15,13 +15,12 @@ export function computeAttendanceStats(
   course: Course,
   sessions: Session[]
 ): AttendanceStats {
-  const active = sessions.filter((s) => s.status !== 'cancelled' && !s.deleted_at);
-  const present = active.filter((s) => s.status === 'present').length;
-  const absent = active.filter((s) => s.status === 'absent').length;
-  const cancelled = sessions.filter(
-    (s) => s.status === 'cancelled' && !s.deleted_at
-  ).length;
-  const total = active.length;
+  // 'planned' sessions aren't decided yet, so they sit outside every total.
+  const live = sessions.filter((s) => !s.deleted_at && s.status !== 'planned');
+  const present = live.filter((s) => s.status === 'present').length;
+  const absent = live.filter((s) => s.status === 'absent').length;
+  const cancelled = live.filter((s) => s.status === 'cancelled').length;
+  const total = present + absent;
   const threshold = course.min_attendance_pct;
   const t = threshold / 100;
   const pct = total > 0 ? (present / total) * 100 : 0;
@@ -73,11 +72,14 @@ export function computeTermProjection(
   termEnd: string,
   today: string
 ): TermProjection {
-  const active = sessions.filter((s) => !s.deleted_at);
-  const present = active.filter((s) => s.status === 'present').length;
-  const absent = active.filter((s) => s.status === 'absent').length;
+  const live = sessions.filter((s) => !s.deleted_at);
+  const decided = live.filter((s) => s.status !== 'planned');
+  const present = decided.filter((s) => s.status === 'present').length;
+  const absent = decided.filter((s) => s.status === 'absent').length;
 
-  const recordedDates = new Set(active.map((s) => s.scheduled_date));
+  // Dates already settled (present/absent/cancelled) shouldn't be counted as
+  // "still to come".
+  const decidedDates = new Set(decided.map((s) => s.scheduled_date));
 
   // Future scheduled dates with nothing recorded yet.
   const expected = generateExpectedDates(
@@ -85,10 +87,22 @@ export function computeTermProjection(
     new Date(`${termStart}T00:00:00`),
     new Date(`${termEnd}T00:00:00`)
   );
+  const expectedKeys = new Set(expected.map((d) => format(d, 'yyyy-MM-dd')));
   let remaining = 0;
   for (const d of expected) {
     const key = format(d, 'yyyy-MM-dd');
-    if (key >= today && !recordedDates.has(key)) remaining += 1;
+    if (key >= today && !decidedDates.has(key)) remaining += 1;
+  }
+  // Ad-hoc planned classes in the future that aren't already on the recurring
+  // schedule also count as classes still to come.
+  for (const s of live) {
+    if (
+      s.status === 'planned' &&
+      s.scheduled_date >= today &&
+      !expectedKeys.has(s.scheduled_date)
+    ) {
+      remaining += 1;
+    }
   }
 
   const threshold = course.min_attendance_pct;

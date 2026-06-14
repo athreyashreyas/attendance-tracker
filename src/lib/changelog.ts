@@ -3,6 +3,8 @@ export interface Release {
   date: string; // 'YYYY-MM-DD'
   title: string;
   notes: string[];
+  /** Feature releases worth reading; minor/bug-fix releases leave this off. */
+  major?: boolean;
 }
 
 /**
@@ -12,8 +14,23 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.5.1',
+    date: '2026-06-14',
+    major: true,
+    title: 'Lots of little touches',
+    notes: [
+      'Long forms in the pop-up sheets scroll smoothly again. Drag the little handle to dismiss, scroll the rest.',
+      'A fresh set of class colours, each one its own and all at home on the parchment.',
+      'Deleting a class now asks first, and tells you how much attendance you would be letting go, so nothing disappears by surprise. Once it is gone, you land back on the home screen with the rest.',
+      'Add a class to any day and leave it unmarked. Pick "Not yet" and it waits on the calendar until you record how it went.',
+      'The home screen now counts only the classes still left to mark today, so cancelled or already-marked days stop nudging you.',
+      'This very list now flags the major updates, so you can spot the feature releases at a glance.',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-06-14',
+    major: true,
     title: 'Your classes take the lead',
     notes: [
       'Classes are now the heart of things. Add anything you like, a semester subject or a Saturday dance class, with or without a semester attached.',
@@ -34,6 +51,7 @@ export const CHANGELOG: Release[] = [
   {
     version: '0.3.0',
     date: '2026-06-10',
+    major: true,
     title: 'Updates that just arrive',
     notes: [
       'New versions now flow in on their own. No more removing and re-adding to your home screen.',
@@ -43,6 +61,7 @@ export const CHANGELOG: Release[] = [
   {
     version: '0.2.0',
     date: '2026-06-08',
+    major: true,
     title: 'See the whole term',
     notes: [
       'Set when each class begins and ends, watch the sessions left tick down, and know exactly how many you can still miss.',
@@ -52,6 +71,7 @@ export const CHANGELOG: Release[] = [
   {
     version: '0.1.0',
     date: '2026-06-05',
+    major: true,
     title: 'Hello, Attend',
     notes: [
       'Track attendance for every class, stay above your threshold, and keep it all on your device with a quiet backup to your account.',
