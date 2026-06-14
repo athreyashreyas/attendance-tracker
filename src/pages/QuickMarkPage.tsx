@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { Check, X, ChevronLeft } from 'lucide-react';
-import { useActiveSemester } from '../hooks/useSemesters';
-import { useCourses } from '../hooks/useCourses';
+import { useAllCourses } from '../hooks/useCourses';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
 import { todayKey, formatSessionDate } from '../utils/dates';
 import { hexToRgba } from '../lib/colors';
@@ -18,8 +17,7 @@ const slideVariants = {
 
 export function QuickMarkPage() {
   const navigate = useNavigate();
-  const semester = useActiveSemester();
-  const { data: courses } = useCourses(semester?.id);
+  const { data: courses } = useAllCourses();
   const { data: allSessions } = useAllSessions();
   const { markSession } = useSessionMutations();
 
@@ -41,11 +39,26 @@ export function QuickMarkPage() {
 
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+  const initialized = useRef(false);
+  const justCompleted = useRef(false);
+
+  // Start on the first class that hasn't been marked yet. If everything is
+  // already marked, land straight on the "all done" screen — returning to this
+  // tab should never offer to re-mark a finished day.
+  useEffect(() => {
+    if (initialized.current || courses === undefined || allSessions === undefined) {
+      return;
+    }
+    initialized.current = true;
+    const firstUnmarked = scheduled.findIndex((c) => !markedToday.has(c.id));
+    setIndex(firstUnmarked === -1 ? scheduled.length : firstUnmarked);
+  }, [courses, allSessions, scheduled, markedToday]);
 
   const done = scheduled.length > 0 && index >= scheduled.length;
 
+  // Only bounce back to the dashboard when the day was finished in this visit.
   useEffect(() => {
-    if (done) {
+    if (done && justCompleted.current) {
       const timer = setTimeout(() => navigate('/dashboard'), 1500);
       return () => clearTimeout(timer);
     }
@@ -59,7 +72,11 @@ export function QuickMarkPage() {
   async function mark(course: Course, status: SessionStatus) {
     await markSession(course.id, today, status);
     setDirection(1);
-    setIndex((i) => i + 1); // advance (may reach the done screen)
+    setIndex((i) => {
+      const next = i + 1;
+      if (next >= scheduled.length) justCompleted.current = true;
+      return next;
+    });
   }
 
   function handleDragEnd(_e: unknown, info: PanInfo) {
@@ -72,9 +89,7 @@ export function QuickMarkPage() {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center px-8 text-center">
         <p className="font-serif text-2xl text-ink-900">Nothing scheduled today</p>
-        <p className="mt-2 font-sans text-sm text-ink-500">
-          Enjoy the day off.
-        </p>
+        <p className="mt-2 font-sans text-sm text-ink-500">Enjoy the day off.</p>
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
@@ -97,7 +112,16 @@ export function QuickMarkPage() {
           <Check size={40} className="text-sage-600" strokeWidth={2.5} />
         </div>
         <p className="mt-5 font-serif text-3xl text-ink-900">All done for today</p>
-        <p className="mt-2 font-sans text-sm text-ink-500">Nicely kept up.</p>
+        <p className="mt-2 font-sans text-sm text-ink-500">
+          Change any of these from the Calendar.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="mt-6 font-sans text-sm font-medium text-sage-600"
+        >
+          Back to dashboard
+        </button>
       </motion.div>
     );
   }
@@ -151,8 +175,7 @@ export function QuickMarkPage() {
 
             {current && (
               <p className="mt-3 font-sans text-sm text-ink-500">
-                Marked{' '}
-                <span className="font-semibold">{current.status}</span>. Tap to
+                Marked <span className="font-semibold">{current.status}</span>. Tap to
                 change.
               </p>
             )}

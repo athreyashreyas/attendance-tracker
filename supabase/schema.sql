@@ -22,7 +22,7 @@ create table public.semesters (
 create table public.courses (
   id                  uuid    default gen_random_uuid() primary key,
   user_id             uuid    references auth.users(id) on delete cascade not null,
-  semester_id         uuid    references public.semesters(id) on delete cascade not null,
+  semester_id         uuid    references public.semesters(id) on delete set null,
   name                text    not null,
   color               text    not null default '#4F7942',
   schedule_days       int[]   default '{}' not null,

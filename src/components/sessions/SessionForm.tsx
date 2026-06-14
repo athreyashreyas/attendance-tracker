@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, CircleSlash, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import {
   useSessionMutations,
   findSessionForDate,
 } from '../../hooks/useSessions';
+import { STATUS_OPTIONS } from '../../lib/status';
 import { todayKey } from '../../utils/dates';
 import type { Session, SessionStatus } from '../../types';
 
@@ -17,22 +18,6 @@ interface SessionFormProps {
   session?: Session | null;
   defaultDate?: string;
 }
-
-const STATUS_OPTIONS: {
-  value: SessionStatus;
-  label: string;
-  icon: typeof Check;
-  active: string;
-}[] = [
-  { value: 'present', label: 'Present', icon: Check, active: 'bg-sage-500 text-white' },
-  { value: 'absent', label: 'Absent', icon: X, active: 'bg-rose-500 text-white' },
-  {
-    value: 'cancelled',
-    label: 'Cancelled',
-    icon: CircleSlash,
-    active: 'bg-ink-500 text-white',
-  },
-];
 
 const MAX_NOTES = 200;
 

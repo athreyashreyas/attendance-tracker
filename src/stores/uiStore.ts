@@ -1,32 +1,28 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+/**
+ * Which classes the dashboard and calendar show:
+ *   'all'   — every class
+ *   'other' — standalone classes (no semester)
+ *   <id>    — classes in that semester
+ */
+export type ViewFilter = 'all' | 'other' | string;
+
 interface UiState {
-  activeSemesterId: string | null;
-  quickMarkCourseIndex: number;
-  setActiveSemester: (id: string | null) => void;
-  setQuickMarkIndex: (i: number) => void;
-  nextQuickMarkCourse: () => void;
-  prevQuickMarkCourse: () => void;
+  viewFilter: ViewFilter;
+  setViewFilter: (filter: ViewFilter) => void;
 }
 
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
-      activeSemesterId: null,
-      quickMarkCourseIndex: 0,
-      setActiveSemester: (id) => set({ activeSemesterId: id }),
-      setQuickMarkIndex: (i) => set({ quickMarkCourseIndex: Math.max(0, i) }),
-      nextQuickMarkCourse: () =>
-        set((s) => ({ quickMarkCourseIndex: s.quickMarkCourseIndex + 1 })),
-      prevQuickMarkCourse: () =>
-        set((s) => ({
-          quickMarkCourseIndex: Math.max(0, s.quickMarkCourseIndex - 1),
-        })),
+      viewFilter: 'all',
+      setViewFilter: (filter) => set({ viewFilter: filter }),
     }),
     {
       name: 'attend_ui',
-      partialize: (s) => ({ activeSemesterId: s.activeSemesterId }),
+      partialize: (s) => ({ viewFilter: s.viewFilter }),
     }
   )
 );

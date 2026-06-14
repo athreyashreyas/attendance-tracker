@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Pencil, Plus } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { ProgressRing } from '../components/ui/ProgressRing';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Fab } from '../components/ui/Fab';
 import { SessionItem } from '../components/sessions/SessionItem';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { CourseForm } from '../components/courses/CourseForm';
@@ -13,6 +14,7 @@ import { useCourse } from '../hooks/useCourses';
 import { useSessions } from '../hooks/useSessions';
 import { useSemesters } from '../hooks/useSemesters';
 import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
+import { TONE_CLASSES } from '../lib/status';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
 import type { Session, TermProjection } from '../types';
@@ -60,6 +62,10 @@ export function CourseDetailPage() {
     );
   }
 
+  const winStart = course.start_date ?? semester?.start_date ?? null;
+  const winEnd = course.end_date ?? semester?.end_date ?? null;
+  const hasWindow = !!winStart && !!winEnd;
+
   function openNewSession() {
     setSessionForm({ open: true, session: null });
   }
@@ -71,7 +77,7 @@ export function CourseDetailPage() {
     <div className="relative mx-auto max-w-3xl pb-24 md:pb-2">
       <PageHeader
         title={course.name}
-        subtitle={semester?.name}
+        subtitle={semester?.name ?? 'Standalone'}
         left={
           <button
             type="button"
@@ -87,7 +93,7 @@ export function CourseDetailPage() {
             type="button"
             onClick={() => setEditCourse(true)}
             className="flex h-8 w-8 items-center justify-center rounded-full text-ink-500"
-            aria-label="Edit course"
+            aria-label="Edit class"
           >
             <Pencil size={18} />
           </button>
@@ -161,16 +167,16 @@ export function CourseDetailPage() {
       </div>
 
       {/* Heatmap */}
-      {semester && (
+      {hasWindow && (
         <div className="mt-8">
           <h2 className="mb-3 font-sans text-base font-medium text-ink-900">
-            Semester overview
+            Overview
           </h2>
           <div className="rounded-card bg-parchment-50 p-4 shadow-sm">
             <AttendanceHeatmap
               course={course}
-              semesterStart={course.start_date ?? semester.start_date}
-              semesterEnd={course.end_date ?? semester.end_date}
+              semesterStart={winStart!}
+              semesterEnd={winEnd!}
               sessions={sessions ?? []}
               onSelectDate={(date, session) =>
                 setSessionForm({ open: true, session: session ?? null, date })
@@ -180,15 +186,7 @@ export function CourseDetailPage() {
         </div>
       )}
 
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.92 }}
-        onClick={openNewSession}
-        className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-8 md:right-8"
-        aria-label="Add class"
-      >
-        <Plus size={26} />
-      </motion.button>
+      <Fab onClick={openNewSession} label="Add class" />
 
       <SessionForm
         open={sessionForm.open}
@@ -201,10 +199,9 @@ export function CourseDetailPage() {
       <CourseForm
         open={editCourse}
         onClose={() => setEditCourse(false)}
-        semesterId={course.semester_id}
         course={course}
-        semesterStart={semester?.start_date}
-        semesterEnd={semester?.end_date}
+        semesters={semesters ?? []}
+        defaultSemesterId={course.semester_id}
       />
     </div>
   );
@@ -233,18 +230,12 @@ function ProjectionCallout({
     message = `${left} You can miss up to ${canSkip} and still finish above ${threshold}%.`;
   }
 
-  const toneClasses = {
-    rose: 'bg-rose-100 text-rose-600',
-    amber: 'bg-amber-100 text-amber-600',
-    sage: 'bg-sage-100 text-sage-700',
-  } as const;
-
   return (
-    <div className={`mt-4 rounded-card px-4 py-3 ${toneClasses[tone]}`}>
+    <div className={`mt-4 rounded-card px-4 py-3 ${TONE_CLASSES[tone]}`}>
       <p className="font-sans text-sm font-medium">{message}</p>
       <p className="mt-1 font-sans text-xs opacity-80">
-        Attend everything and you finish at {bestPct}%. Attend nothing more and
-        you finish at {worstPct}%.
+        Attend everything and you finish at {bestPct}%. Attend nothing more and you
+        finish at {worstPct}%.
       </p>
     </div>
   );
@@ -288,15 +279,9 @@ function ThresholdCallout({
     } and stay above ${threshold}%.`;
   }
 
-  const toneClasses = {
-    rose: 'bg-rose-100 text-rose-600',
-    amber: 'bg-amber-100 text-amber-600',
-    sage: 'bg-sage-100 text-sage-700',
-  } as const;
-
   return (
     <div
-      className={`mt-4 rounded-card px-4 py-3 font-sans text-sm font-medium ${toneClasses[tone]}`}
+      className={`mt-4 rounded-card px-4 py-3 font-sans text-sm font-medium ${TONE_CLASSES[tone]}`}
     >
       {message}
     </div>

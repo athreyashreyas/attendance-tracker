@@ -1,16 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addDays, addMonths, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarX2, Plus } from 'lucide-react';
+import {
+  addDays,
+  addMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+} from 'date-fns';
+import { ChevronLeft, ChevronRight, CalendarX2, Plus, Check } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SyncIndicator } from '../components/ui/SyncIndicator';
 import { MonthCalendar, type DayDot } from '../components/calendar/MonthCalendar';
+import { ViewFilterBar } from '../components/courses/ViewFilterBar';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Button } from '../components/ui/Button';
 import { SessionForm } from '../components/sessions/SessionForm';
-import { useActiveSemester } from '../hooks/useSemesters';
-import { useCourses } from '../hooks/useCourses';
+import { useCourseView } from '../hooks/useCourseView';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
-import { generateExpectedDates } from '../lib/calculations';
+import { expectedDatesInRange } from '../lib/calculations';
+import { STATUS_LABEL } from '../lib/status';
 import {
   fromDateKey,
   toDateKey,
@@ -18,13 +26,7 @@ import {
   formatSessionDate,
   todayKey,
 } from '../utils/dates';
-import type { Course, Session, SessionStatus } from '../types';
-
-const STATUS_LABEL: Record<SessionStatus, string> = {
-  present: 'Present',
-  absent: 'Absent',
-  cancelled: 'Cancelled',
-};
+import type { Course, Session } from '../types';
 
 interface FormTarget {
   courseId: string;
@@ -33,35 +35,34 @@ interface FormTarget {
 }
 
 export function CalendarPage() {
-  const semester = useActiveSemester();
-  const { data: courses } = useCourses(semester?.id);
+  const { filter, setFilter, courses, allCourses, semesters } = useCourseView();
   const { data: allSessions } = useAllSessions();
 
-  const [filter, setFilter] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [form, setForm] = useState<FormTarget | null>(null);
   const [breakOpen, setBreakOpen] = useState(false);
+  const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
+
+  const hasStandalone = allCourses.some((c) => !c.semester_id);
 
   const courseById = useMemo(() => {
     const map = new Map<string, Course>();
-    for (const c of courses ?? []) map.set(c.id, c);
+    for (const c of courses) map.set(c.id, c);
     return map;
   }, [courses]);
 
-  // Recorded sessions in this semester, grouped by date (respecting the filter).
+  // Recorded sessions for the courses in view, grouped by date.
   const byDate = useMemo(() => {
     const map = new Map<string, Session[]>();
     for (const s of allSessions ?? []) {
       if (!courseById.has(s.course_id)) continue;
-      if (filter && s.course_id !== filter) continue;
       const list = map.get(s.scheduled_date) ?? [];
       list.push(s);
       map.set(s.scheduled_date, list);
     }
     return map;
-  }, [allSessions, courseById, filter]);
+  }, [allSessions, courseById]);
 
-  // Every course+date that already has a recorded session (unfiltered).
   const recordedKeys = useMemo(() => {
     const set = new Set<string>();
     for (const s of allSessions ?? []) {
@@ -70,15 +71,32 @@ export function CalendarPage() {
     return set;
   }, [allSessions, courseById]);
 
-  // Planned (scheduled but unrecorded) classes by date.
+  // Bound navigation to a single semester's span; free otherwise.
+  const monthBounds = useMemo(() => {
+    if (filter === 'all' || filter === 'other') return null;
+    const sem = semesters.find((s) => s.id === filter);
+    if (!sem) return null;
+    return {
+      min: startOfMonth(fromDateKey(sem.start_date)),
+      max: startOfMonth(fromDateKey(sem.end_date)),
+    };
+  }, [filter, semesters]);
+
+  const clampedMonth = useMemo(() => {
+    if (!monthBounds) return month;
+    if (month < monthBounds.min) return monthBounds.min;
+    if (month > monthBounds.max) return monthBounds.max;
+    return month;
+  }, [month, monthBounds]);
+
+  // Planned (scheduled-but-unrecorded) classes, computed only for the visible
+  // grid so standalone classes with no end date stay bounded.
   const plannedByDate = useMemo(() => {
+    const gridStart = startOfWeek(startOfMonth(clampedMonth), { weekStartsOn: 0 });
+    const gridEnd = endOfWeek(endOfMonth(clampedMonth), { weekStartsOn: 0 });
     const map = new Map<string, Course[]>();
-    if (!semester) return map;
-    for (const c of courses ?? []) {
-      if (filter && c.id !== filter) continue;
-      const start = fromDateKey(c.start_date ?? semester.start_date);
-      const end = fromDateKey(c.end_date ?? semester.end_date);
-      for (const d of generateExpectedDates(c, start, end)) {
+    for (const c of courses) {
+      for (const d of expectedDatesInRange(c, gridStart, gridEnd)) {
         const key = toDateKey(d);
         if (recordedKeys.has(`${c.id}|${key}`)) continue;
         const list = map.get(key) ?? [];
@@ -87,26 +105,10 @@ export function CalendarPage() {
       }
     }
     return map;
-  }, [courses, semester, filter, recordedKeys]);
+  }, [courses, clampedMonth, recordedKeys]);
 
-  const monthBounds = useMemo(() => {
-    if (!semester) return null;
-    return {
-      min: startOfMonth(fromDateKey(semester.start_date)),
-      max: startOfMonth(fromDateKey(semester.end_date)),
-    };
-  }, [semester]);
-
-  const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
-  const clampedMonth = useMemo(() => {
-    if (!monthBounds) return month;
-    if (month < monthBounds.min) return monthBounds.min;
-    if (month > monthBounds.max) return monthBounds.max;
-    return month;
-  }, [month, monthBounds]);
-
-  const canPrev = monthBounds ? clampedMonth > monthBounds.min : false;
-  const canNext = monthBounds ? clampedMonth < monthBounds.max : false;
+  const canPrev = monthBounds ? clampedMonth > monthBounds.min : true;
+  const canNext = monthBounds ? clampedMonth < monthBounds.max : true;
 
   function getDots(dateKey: string): DayDot[] {
     const dots: DayDot[] = [];
@@ -147,24 +149,12 @@ export function CalendarPage() {
         }
       />
 
-      {(courses?.length ?? 0) > 0 && (
-        <div className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          <FilterChip
-            label="All"
-            active={filter === null}
-            onClick={() => setFilter(null)}
-          />
-          {courses!.map((c) => (
-            <FilterChip
-              key={c.id}
-              label={c.name}
-              color={c.color}
-              active={filter === c.id}
-              onClick={() => setFilter(c.id)}
-            />
-          ))}
-        </div>
-      )}
+      <ViewFilterBar
+        filter={filter}
+        onChange={setFilter}
+        semesters={semesters}
+        hasStandalone={hasStandalone}
+      />
 
       <div className="mb-3 flex items-center justify-between">
         <button
@@ -235,7 +225,7 @@ export function CalendarPage() {
                   style={{ backgroundColor: course?.color ?? '#9B9890' }}
                 />
                 <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
-                  {course?.name ?? 'Course'}
+                  {course?.name ?? 'Class'}
                 </span>
                 <span className="shrink-0 font-sans text-xs text-ink-500">
                   {STATUS_LABEL[s.status]}
@@ -270,13 +260,13 @@ export function CalendarPage() {
             </button>
           ))}
 
-          {(courses?.length ?? 0) > 0 && (
+          {courses.length > 0 && (
             <div className="pt-2">
               <p className="mb-2 font-sans text-xs font-medium text-ink-500">
                 Add an extra class
               </p>
               <div className="flex flex-wrap gap-2">
-                {courses!.map((c) => (
+                {courses.map((c) => (
                   <button
                     key={c.id}
                     type="button"
@@ -312,41 +302,9 @@ export function CalendarPage() {
       <BreakSheet
         open={breakOpen}
         onClose={() => setBreakOpen(false)}
-        courses={courses ?? []}
-        semesterStart={semester?.start_date}
-        semesterEnd={semester?.end_date}
+        courses={courses}
       />
     </div>
-  );
-}
-
-function FilterChip({
-  label,
-  color,
-  active,
-  onClick,
-}: {
-  label: string;
-  color?: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 font-sans text-sm font-medium transition-colors ${
-        active ? 'bg-sage-500 text-white' : 'bg-parchment-200 text-ink-500'
-      }`}
-    >
-      {color && (
-        <span
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: active ? '#FFFFFF' : color }}
-        />
-      )}
-      {label}
-    </button>
   );
 }
 
@@ -354,46 +312,57 @@ function BreakSheet({
   open,
   onClose,
   courses,
-  semesterStart,
-  semesterEnd,
 }: {
   open: boolean;
   onClose: () => void;
   courses: Course[];
-  semesterStart?: string;
-  semesterEnd?: string;
 }) {
   const { markBreak } = useSessionMutations();
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setStart(semesterStart && todayKey() < semesterStart ? semesterStart : todayKey());
+    setStart(todayKey());
     setEnd(toDateKey(addDays(new Date(), 1)));
+    setSelected(new Set(courses.map((c) => c.id))); // default: all classes
     setError(null);
     setResult(null);
-  }, [open, semesterStart]);
+  }, [open, courses]);
+
+  const allSelected = selected.size === courses.length && courses.length > 0;
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(courses.map((c) => c.id)));
+  }
 
   async function handleSave() {
     if (end < start) {
       setError('The end date should be on or after the start date.');
       return;
     }
-    if (semesterStart && start < semesterStart) {
-      setError('That start date is before the semester begins.');
+    if (selected.size === 0) {
+      setError('Pick at least one class to cancel.');
       return;
     }
-    if (semesterEnd && end > semesterEnd) {
-      setError('That end date is after the semester ends.');
-      return;
-    }
+    setError(null);
     setSaving(true);
     try {
-      const count = await markBreak(courses, start, end);
+      const chosen = courses.filter((c) => selected.has(c.id));
+      const count = await markBreak(chosen, start, end);
       setResult(
         count === 0
           ? 'No scheduled classes in that range.'
@@ -408,8 +377,8 @@ function BreakSheet({
     <BottomSheet open={open} onClose={onClose} title="Cancel a break">
       <div className="space-y-4 pb-2">
         <p className="font-sans text-sm text-ink-500">
-          Cancels every scheduled class between these dates, across all courses.
-          Classes you have already marked stay as they are.
+          Cancels the scheduled classes you choose between these dates. Anything you
+          have already marked stays as it is.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -435,6 +404,48 @@ function BreakSheet({
             />
           </div>
         </div>
+
+        {courses.length > 0 && (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="font-sans text-xs font-medium text-ink-500">Classes</p>
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="font-sans text-xs font-medium text-sage-600"
+              >
+                {allSelected ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {courses.map((c) => {
+                const on = selected.has(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggle(c.id)}
+                    className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3 text-left"
+                  >
+                    <span
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                      style={{
+                        backgroundColor: on ? c.color : 'transparent',
+                        boxShadow: on ? undefined : `inset 0 0 0 1.5px #D4D2CB`,
+                      }}
+                    >
+                      {on && <Check size={14} strokeWidth={3} className="text-white" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
+                      {c.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {error && <p className="font-sans text-sm text-rose-600">{error}</p>}
         {result && <p className="font-sans text-sm text-sage-600">{result}</p>}
         <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>

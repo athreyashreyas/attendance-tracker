@@ -124,9 +124,9 @@ export function useSessionMutations() {
       const dates = generateExpectedDates(course, rangeStart, rangeEnd);
       for (const d of dates) {
         const key = toDateKey(d);
+        // Leave anything already recorded (present/absent/cancelled) untouched.
         const existing = await findSessionForDate(course.id, key);
-        if (existing && existing.status !== 'cancelled') continue; // keep real marks
-        if (existing && existing.status === 'cancelled') continue; // already off
+        if (existing) continue;
         await saveSession({
           course_id: course.id,
           scheduled_date: key,

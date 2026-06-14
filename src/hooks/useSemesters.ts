@@ -1,42 +1,18 @@
-import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
-import { useUiStore } from '../stores/uiStore';
 import { nowIso } from '../utils/dates';
 import { toRemote } from '../utils/records';
 import type { Semester } from '../types';
 
 async function loadSemesters(): Promise<Semester[]> {
   const all = await db.semesters.filter((s) => !s.deleted_at).toArray();
-  return all.sort((a, b) => {
-    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
-    return b.start_date.localeCompare(a.start_date);
-  });
+  return all.sort((a, b) => b.start_date.localeCompare(a.start_date));
 }
 
 export function useSemesters() {
   return useQuery({ queryKey: ['semesters'], queryFn: loadSemesters });
-}
-
-/** The active semester, resolved from the UI store falling back to is_active. */
-export function useActiveSemester(): Semester | null {
-  const activeId = useUiStore((s) => s.activeSemesterId);
-  const setActive = useUiStore((s) => s.setActiveSemester);
-  const { data: semesters } = useSemesters();
-
-  const chosen = useMemo<Semester | null>(() => {
-    if (!semesters || semesters.length === 0) return null;
-    const byId = activeId ? semesters.find((s) => s.id === activeId) : undefined;
-    return byId ?? semesters.find((s) => s.is_active) ?? semesters[0];
-  }, [semesters, activeId]);
-
-  useEffect(() => {
-    if (chosen && chosen.id !== activeId) setActive(chosen.id);
-  }, [chosen, activeId, setActive]);
-
-  return chosen;
 }
 
 export interface SemesterInput {
@@ -56,9 +32,7 @@ export function useSemesterMutations() {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) throw new Error('Not authenticated');
 
-    const existing = input.id
-      ? await db.semesters.get(input.id)
-      : undefined;
+    const existing = input.id ? await db.semesters.get(input.id) : undefined;
     const now = nowIso();
     const semester: Semester = {
       id: input.id ?? crypto.randomUUID(),
@@ -80,35 +54,10 @@ export function useSemesterMutations() {
     return semester;
   }
 
-  /** Make one semester active and deactivate the rest. */
-  async function activateSemester(id: string): Promise<void> {
-    const all = await db.semesters.filter((s) => !s.deleted_at).toArray();
-    for (const s of all) {
-      const shouldBeActive = s.id === id;
-      if (s.is_active !== shouldBeActive) {
-        await syncEngine.writeLocal('semesters', 'UPDATE', {
-          ...toRemote(s),
-          is_active: shouldBeActive,
-          updated_at: nowIso(),
-        });
-      }
-    }
-    useUiStore.getState().setActiveSemester(id);
-    invalidate();
-  }
-
-  async function archiveSemester(id: string): Promise<void> {
-    const s = await db.semesters.get(id);
-    if (!s) return;
-    await syncEngine.writeLocal('semesters', 'UPDATE', {
-      ...toRemote(s),
-      is_active: false,
-      updated_at: nowIso(),
-    });
-    invalidate();
-  }
-
-  /** Returns false (and does nothing) if the semester still has sessions. */
+  /**
+   * Returns false (and does nothing) if any class in the semester still has
+   * recorded sessions — the user is asked to clear those first.
+   */
   async function deleteSemester(id: string): Promise<boolean> {
     const courses = await db.courses
       .where('semester_id')
@@ -145,5 +94,5 @@ export function useSemesterMutations() {
     return true;
   }
 
-  return { saveSemester, activateSemester, archiveSemester, deleteSemester };
+  return { saveSemester, deleteSemester };
 }

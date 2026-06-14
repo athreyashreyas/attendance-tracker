@@ -23,8 +23,10 @@ export function useAttendanceStats(
 }
 
 /**
- * Project the course's attendance across the whole term (classes still to come).
- * Needs the owning semester for the term's date range.
+ * Project the course's attendance across the term (classes still to come).
+ * Bounds come from the course's own dates, falling back to its semester when
+ * linked. Returns null when there's no end date to project toward (e.g. an
+ * open-ended standalone class) — the UI then shows running stats instead.
  */
 export function useTermProjection(
   course: Course | null | undefined,
@@ -33,10 +35,10 @@ export function useTermProjection(
   const { data: sessions } = useSessions(course?.id);
 
   return useMemo(() => {
-    if (!course || !semester) return null;
-    // The course's own dates win; fall back to the semester's range.
-    const start = course.start_date ?? semester.start_date;
-    const end = course.end_date ?? semester.end_date;
+    if (!course) return null;
+    const start = course.start_date ?? semester?.start_date ?? null;
+    const end = course.end_date ?? semester?.end_date ?? null;
+    if (!start || !end) return null;
     return computeTermProjection(course, sessions ?? [], start, end, todayKey());
   }, [course, semester, sessions]);
 }

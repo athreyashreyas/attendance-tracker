@@ -1,48 +1,41 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addDays } from 'date-fns';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   LogOut,
   Plus,
   Download,
   FileText,
   Trash2,
-  CheckCircle2,
-  Archive,
+  ChevronDown,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Modal } from '../components/ui/Modal';
-import { Badge } from '../components/ui/Badge';
 import { useAuth } from '../hooks/useAuth';
 import {
   useSemesters,
   useSemesterMutations,
   type SemesterInput,
 } from '../hooks/useSemesters';
-import { useCourses } from '../hooks/useCourses';
+import { useAllCourses } from '../hooks/useCourses';
 import { db } from '../lib/db';
 import { exportAllDataAsJSON, exportCourseAsCSV } from '../lib/export';
+import { APP_VERSION, CHANGELOG, type Release } from '../lib/changelog';
 import { formatLongDate, toDateKey } from '../utils/dates';
 import type { Semester } from '../types';
-
-const APP_VERSION = '0.4.7';
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { data: semesters } = useSemesters();
-  const activeSemester = semesters?.find((s) => s.is_active) ?? null;
-  const { data: courses } = useCourses(activeSemester?.id);
-  const { activateSemester, archiveSemester, deleteSemester } =
-    useSemesterMutations();
+  const { data: courses } = useAllCourses();
+  const { deleteSemester } = useSemesterMutations();
 
-  const [semesterForm, setSemesterForm] = useState<Semester | null | 'new'>(
-    null
-  );
-  const [confirmActivate, setConfirmActivate] = useState<Semester | null>(null);
+  const [semesterForm, setSemesterForm] = useState<Semester | null | 'new'>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
 
   async function handleSignOut() {
@@ -96,58 +89,34 @@ export function SettingsPage() {
           </button>
         }
       >
+        <p className="mb-3 font-sans text-xs text-ink-500">
+          Optional groups for your classes. A class can belong to a semester or stand
+          on its own.
+        </p>
         <div className="space-y-2">
           {(semesters ?? []).map((s) => (
-            <div
-              key={s.id}
-              className="rounded-card bg-parchment-100 p-3.5"
-            >
+            <div key={s.id} className="rounded-card bg-parchment-100 p-3.5">
               <div className="flex items-start justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => setSemesterForm(s)}
                   className="min-w-0 text-left"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-sans text-sm font-medium text-ink-900">
-                      {s.name}
-                    </span>
-                    {s.is_active && <Badge tone="green">Active</Badge>}
-                  </div>
+                  <span className="truncate font-sans text-sm font-medium text-ink-900">
+                    {s.name}
+                  </span>
                   <p className="mt-0.5 font-sans text-xs text-ink-500">
                     {formatLongDate(s.start_date)} to {formatLongDate(s.end_date)}
                   </p>
                 </button>
-              </div>
-              <div className="mt-3 flex gap-2">
-                {!s.is_active && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setConfirmActivate(s)}
-                  >
-                    <CheckCircle2 size={14} />
-                    Set active
-                  </Button>
-                )}
-                {s.is_active && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => archiveSemester(s.id)}
-                  >
-                    <Archive size={14} />
-                    Archive
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
+                  type="button"
                   onClick={() => handleDelete(s.id)}
-                  className="text-rose-600"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-600"
+                  aria-label={`Delete ${s.name}`}
                 >
-                  <Trash2 size={14} />
-                </Button>
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
           ))}
@@ -172,7 +141,7 @@ export function SettingsPage() {
         {(courses?.length ?? 0) > 0 && (
           <div className="mt-3">
             <p className="mb-2 font-sans text-xs font-medium text-ink-500">
-              Export course attendance (CSV)
+              Export class attendance (CSV)
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {courses!.map((c) => (
@@ -201,9 +170,22 @@ export function SettingsPage() {
       <Section title="About">
         <Row label="Version" value={APP_VERSION} />
         <p className="mt-2 font-sans text-sm text-ink-500">
-          Attend keeps your classes and attendance on your device, and quietly
-          backs them up to your account.
+          Attend keeps your classes and attendance on your device, and quietly backs
+          them up to your account.
         </p>
+      </Section>
+
+      {/* What's new */}
+      <Section title="What's new">
+        <div className="space-y-2">
+          {CHANGELOG.map((release, i) => (
+            <ReleaseRow
+              key={release.version}
+              release={release}
+              defaultOpen={i === 0}
+            />
+          ))}
+        </div>
       </Section>
 
       <SemesterFormSheet
@@ -212,48 +194,15 @@ export function SettingsPage() {
       />
 
       <Modal
-        open={confirmActivate !== null}
-        onClose={() => setConfirmActivate(null)}
-        title="Switch active semester?"
-      >
-        <p className="font-sans text-sm text-ink-700">
-          Only one semester is active at a time. The dashboard will show{' '}
-          <span className="font-semibold">{confirmActivate?.name}</span>.
-        </p>
-        <div className="mt-5 flex gap-3">
-          <Button
-            variant="secondary"
-            fullWidth
-            onClick={() => setConfirmActivate(null)}
-          >
-            Cancel
-          </Button>
-          <Button
-            fullWidth
-            onClick={async () => {
-              if (confirmActivate) await activateSemester(confirmActivate.id);
-              setConfirmActivate(null);
-            }}
-          >
-            Set active
-          </Button>
-        </div>
-      </Modal>
-
-      <Modal
         open={deleteBlocked}
         onClose={() => setDeleteBlocked(false)}
         title="Can't delete semester"
       >
         <p className="font-sans text-sm text-ink-700">
-          This semester still has classes recorded. Delete its courses first, or
-          archive the semester to keep the data.
+          This semester still has classes with recorded attendance. Move those classes
+          to another semester (or standalone) first, or delete them.
         </p>
-        <Button
-          fullWidth
-          className="mt-5"
-          onClick={() => setDeleteBlocked(false)}
-        >
+        <Button fullWidth className="mt-5" onClick={() => setDeleteBlocked(false)}>
           Got it
         </Button>
       </Modal>
@@ -278,6 +227,65 @@ function Section({
       </div>
       <div className="rounded-card bg-parchment-50 p-4 shadow-sm">{children}</div>
     </section>
+  );
+}
+
+function ReleaseRow({
+  release,
+  defaultOpen,
+}: {
+  release: Release;
+  defaultOpen: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-card bg-parchment-100">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 p-3.5 text-left"
+      >
+        <span className="shrink-0 rounded-full bg-sage-100 px-2 py-0.5 font-sans text-[11px] font-semibold text-sage-700">
+          {release.version}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-sans text-sm font-medium text-ink-900">
+            {release.title}
+          </span>
+          <span className="font-sans text-xs text-ink-500">
+            {formatLongDate(release.date)}
+          </span>
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 text-ink-300"
+        >
+          <ChevronDown size={18} />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.ul
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-2 px-3.5 pb-3.5"
+          >
+            {release.notes.map((note, i) => (
+              <li
+                key={i}
+                className="flex gap-2 font-sans text-sm leading-relaxed text-ink-700"
+              >
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-400" />
+                <span>{note}</span>
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

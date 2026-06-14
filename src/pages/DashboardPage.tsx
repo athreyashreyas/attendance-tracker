@@ -1,29 +1,37 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, CalendarCheck } from 'lucide-react';
+import { CalendarCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SyncIndicator } from '../components/ui/SyncIndicator';
 import { CourseCard } from '../components/courses/CourseCard';
 import { CourseForm } from '../components/courses/CourseForm';
+import { ViewFilterBar } from '../components/courses/ViewFilterBar';
 import { CourseCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
-import { useActiveSemester } from '../hooks/useSemesters';
-import { useCourses } from '../hooks/useCourses';
+import { Fab } from '../components/ui/Fab';
+import { useCourseView } from '../hooks/useCourseView';
 import { listContainer, spring } from '../lib/motion';
 import type { Course, ScheduleDay } from '../types';
 
 export function DashboardPage() {
-  const semester = useActiveSemester();
-  const { data: courses, isLoading } = useCourses(semester?.id);
+  const { filter, setFilter, courses, allCourses, semesters, isLoading, semesterOf } =
+    useCourseView();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
 
+  const hasStandalone = allCourses.some((c) => !c.semester_id);
+
+  // "Mark today" spans every class scheduled today, regardless of the filter.
   const todayDow = new Date().getDay() as ScheduleDay;
-  const scheduledToday = (courses ?? []).filter((c) =>
+  const scheduledToday = allCourses.filter((c) =>
     c.schedule_days.includes(todayDow)
   );
+
+  // A brand-new class defaults to the semester you're currently viewing.
+  const defaultSemesterId =
+    filter === 'all' || filter === 'other' ? null : filter;
 
   function openAdd() {
     setEditing(null);
@@ -34,14 +42,24 @@ export function DashboardPage() {
     setFormOpen(true);
   }
 
-  const showEmpty = !isLoading && (courses?.length ?? 0) === 0;
+  const showEmpty = !isLoading && courses.length === 0;
+
+  const subtitle =
+    filter === 'all'
+      ? 'All classes'
+      : filter === 'other'
+        ? 'Standalone classes'
+        : (semesters.find((s) => s.id === filter)?.name ?? 'All classes');
 
   return (
     <div className="relative pb-24 md:pb-2">
-      <PageHeader
-        title="Attend"
-        subtitle={semester?.name ?? 'No active semester'}
-        right={<SyncIndicator />}
+      <PageHeader title="Attend" subtitle={subtitle} right={<SyncIndicator />} />
+
+      <ViewFilterBar
+        filter={filter}
+        onChange={setFilter}
+        semesters={semesters}
+        hasStandalone={hasStandalone}
       />
 
       {scheduledToday.length > 0 && (
@@ -81,22 +99,17 @@ export function DashboardPage() {
       {showEmpty && (
         <div className="mt-16 flex flex-col items-center px-6 text-center">
           <h2 className="font-serif text-2xl text-ink-900">
-            Add your first course
+            {allCourses.length === 0 ? 'Add your first class' : 'Nothing here yet'}
           </h2>
           <p className="mt-2 font-sans text-sm text-ink-500">
-            Track attendance for each class and stay above your threshold.
+            {allCourses.length === 0
+              ? 'Track attendance for each class and stay above your threshold.'
+              : 'No classes in this view. Add one or switch filters.'}
           </p>
-          {semester && (
-            <Button className="mt-6" size="lg" onClick={openAdd}>
-              <Plus size={18} />
-              New course
-            </Button>
-          )}
-          {!semester && (
-            <p className="mt-6 font-sans text-sm text-ink-300">
-              Create a semester in Settings to get started.
-            </p>
-          )}
+          <Button className="mt-6" size="lg" onClick={openAdd}>
+            <span className="font-serif text-lg leading-none">+</span>
+            New class
+          </Button>
         </div>
       )}
 
@@ -107,36 +120,25 @@ export function DashboardPage() {
           animate="animate"
           className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
         >
-          {courses!.map((course) => (
+          {courses.map((course) => (
             <CourseCard
               key={course.id}
               course={course}
-              semester={semester}
+              semester={semesterOf(course)}
               onEdit={openEdit}
             />
           ))}
         </motion.div>
       )}
 
-      {semester && !showEmpty && (
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.92 }}
-          onClick={openAdd}
-          className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-8 md:right-8"
-          aria-label="Add course"
-        >
-          <Plus size={26} />
-        </motion.button>
-      )}
+      {!showEmpty && <Fab onClick={openAdd} label="Add class" />}
 
       <CourseForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        semesterId={semester?.id ?? ''}
         course={editing}
-        semesterStart={semester?.start_date}
-        semesterEnd={semester?.end_date}
+        semesters={semesters}
+        defaultSemesterId={defaultSemesterId}
       />
     </div>
   );

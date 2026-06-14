@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
@@ -8,7 +8,7 @@ import { CourseColorPicker } from './CourseColorPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
 import { WEEK_ORDER, formatLongDate } from '../../utils/dates';
-import type { Course, ScheduleDay } from '../../types';
+import type { Course, ScheduleDay, Semester } from '../../types';
 
 const DAY_SHORT: Record<number, string> = {
   0: 'Su',
@@ -20,22 +20,23 @@ const DAY_SHORT: Record<number, string> = {
   6: 'Sa',
 };
 
+const NO_SEMESTER = '';
+
 interface CourseFormProps {
   open: boolean;
   onClose: () => void;
-  semesterId: string;
   course?: Course | null;
-  semesterStart?: string;
-  semesterEnd?: string;
+  semesters: Semester[];
+  /** Which semester a brand-new class should default to (null = standalone). */
+  defaultSemesterId?: string | null;
 }
 
 export function CourseForm({
   open,
   onClose,
-  semesterId,
   course,
-  semesterStart,
-  semesterEnd,
+  semesters,
+  defaultSemesterId,
 }: CourseFormProps) {
   const { saveCourse, deleteCourse } = useCourseMutations();
   const isEdit = !!course;
@@ -44,6 +45,7 @@ export function CourseForm({
   const [color, setColor] = useState<string>(DEFAULT_COURSE_COLOR);
   const [days, setDays] = useState<ScheduleDay[]>([]);
   const [minPct, setMinPct] = useState(75);
+  const [semesterId, setSemesterId] = useState<string>(NO_SEMESTER);
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,11 +59,17 @@ export function CourseForm({
     setColor(course?.color ?? DEFAULT_COURSE_COLOR);
     setDays(course?.schedule_days ?? []);
     setMinPct(course?.min_attendance_pct ?? 75);
-    setStart(course?.start_date ?? semesterStart ?? '');
-    setEnd(course?.end_date ?? semesterEnd ?? '');
+    setSemesterId(course?.semester_id ?? defaultSemesterId ?? NO_SEMESTER);
+    setStart(course?.start_date ?? '');
+    setEnd(course?.end_date ?? '');
     setError(null);
     setConfirmDelete(false);
-  }, [open, course, semesterStart, semesterEnd]);
+  }, [open, course, defaultSemesterId]);
+
+  const selectedSemester = useMemo<Semester | null>(
+    () => semesters.find((s) => s.id === semesterId) ?? null,
+    [semesters, semesterId]
+  );
 
   function toggleDay(day: ScheduleDay) {
     setDays((prev) =>
@@ -71,7 +79,7 @@ export function CourseForm({
 
   async function handleSave() {
     if (!name.trim()) {
-      setError('Give the course a name.');
+      setError('Give the class a name.');
       return;
     }
     if (days.length === 0) {
@@ -82,23 +90,30 @@ export function CourseForm({
       setError('The last class should be on or after the first.');
       return;
     }
-    if (start && semesterStart && start < semesterStart) {
-      setError(
-        `Classes can't start before the semester (${formatLongDate(semesterStart)}).`
-      );
-      return;
-    }
-    if (end && semesterEnd && end > semesterEnd) {
-      setError(
-        `Classes can't end after the semester (${formatLongDate(semesterEnd)}).`
-      );
-      return;
+    // Only constrain dates to the semester when the class is linked to one.
+    if (selectedSemester) {
+      if (start && start < selectedSemester.start_date) {
+        setError(
+          `Classes can't start before ${selectedSemester.name} (${formatLongDate(
+            selectedSemester.start_date
+          )}).`
+        );
+        return;
+      }
+      if (end && end > selectedSemester.end_date) {
+        setError(
+          `Classes can't end after ${selectedSemester.name} (${formatLongDate(
+            selectedSemester.end_date
+          )}).`
+        );
+        return;
+      }
     }
     setSaving(true);
     try {
       await saveCourse({
         id: course?.id,
-        semester_id: semesterId,
+        semester_id: semesterId || null,
         name,
         color,
         schedule_days: [...days].sort((a, b) => a - b),
@@ -127,11 +142,11 @@ export function CourseForm({
     <BottomSheet
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit course' : 'New course'}
+      title={isEdit ? 'Edit class' : 'New class'}
     >
       <div className="space-y-6 pb-2">
         <Input
-          label="Course name"
+          label="Class name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Victorian Literature"
@@ -170,12 +185,30 @@ export function CourseForm({
         </div>
 
         <div>
+          <p className="mb-2 font-sans text-xs font-medium text-ink-500">
+            Semester
+          </p>
+          <select
+            value={semesterId}
+            onChange={(e) => setSemesterId(e.target.value)}
+            className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
+          >
+            <option value={NO_SEMESTER}>No semester (standalone)</option>
+            {semesters.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <div className="mb-2 flex items-baseline justify-between">
             <p className="font-sans text-xs font-medium text-ink-500">
               Class dates
             </p>
             <span className="font-sans text-[11px] text-ink-300">
-              Within the semester
+              {selectedSemester ? 'Within the semester' : 'Optional'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -235,7 +268,7 @@ export function CourseForm({
 
         <div className="space-y-3">
           <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
-            {isEdit ? 'Save changes' : 'Add course'}
+            {isEdit ? 'Save changes' : 'Add class'}
           </Button>
 
           {isEdit &&
@@ -255,7 +288,7 @@ export function CourseForm({
                   onClick={handleDelete}
                   disabled={saving}
                 >
-                  Delete course
+                  Delete class
                 </Button>
               </div>
             ) : (
@@ -267,7 +300,7 @@ export function CourseForm({
                 className="text-rose-600"
               >
                 <Trash2 size={16} />
-                Delete course
+                Delete class
               </Button>
             ))}
         </div>

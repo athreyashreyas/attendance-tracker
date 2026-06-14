@@ -121,7 +121,7 @@ export function computeTermProjection(
 
 /**
  * Generate expected session dates for a course between two dates,
- * based on its schedule_days array.
+ * based on its schedule_days array. Returns [] for an invalid range.
  */
 export function generateExpectedDates(
   course: Course,
@@ -129,6 +129,13 @@ export function generateExpectedDates(
   endDate: Date
 ): Date[] {
   const dates: Date[] = [];
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime()) ||
+    course.schedule_days.length === 0
+  ) {
+    return dates;
+  }
   const current = new Date(startDate);
   current.setHours(0, 0, 0, 0);
   const end = new Date(endDate);
@@ -140,4 +147,27 @@ export function generateExpectedDates(
     current.setDate(current.getDate() + 1);
   }
   return dates;
+}
+
+/**
+ * Expected dates within a window, additionally clamped to the course's own
+ * start/end dates when those are set. Keeps schedule expansion bounded — vital
+ * for standalone classes that may have no end date of their own.
+ */
+export function expectedDatesInRange(
+  course: Course,
+  windowStart: Date,
+  windowEnd: Date
+): Date[] {
+  let start = windowStart;
+  let end = windowEnd;
+  if (course.start_date) {
+    const cStart = new Date(`${course.start_date}T00:00:00`);
+    if (cStart > start) start = cStart;
+  }
+  if (course.end_date) {
+    const cEnd = new Date(`${course.end_date}T00:00:00`);
+    if (cEnd < end) end = cEnd;
+  }
+  return generateExpectedDates(course, start, end);
 }

@@ -133,11 +133,11 @@ function CourseBadge({
     );
   }
 
-  // Term finished (no classes left to come)
+  // Nothing scheduled ahead (term over, or an open-ended class): show standing.
   if (isAtRisk) {
     return (
       <Badge tone="rose" icon={<AlertTriangle size={12} />}>
-        Finished below {threshold}%
+        Below {threshold}%
       </Badge>
     );
   }

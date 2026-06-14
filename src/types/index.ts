@@ -18,7 +18,7 @@ export interface Semester {
 export interface Course {
   id: string;
   user_id: string;
-  semester_id: string;
+  semester_id: string | null; // null = a standalone class, not tied to a semester
   name: string;
   color: string; // hex color
   schedule_days: ScheduleDay[];

@@ -6,21 +6,18 @@ import { nowIso } from '../utils/dates';
 import { toRemote } from '../utils/records';
 import type { Course, ScheduleDay } from '../types';
 
-async function loadCourses(semesterId: string): Promise<Course[]> {
-  const courses = await db.courses
-    .where('semester_id')
-    .equals(semesterId)
-    .filter((c) => !c.deleted_at)
-    .toArray();
+async function loadAllCourses(): Promise<Course[]> {
+  const courses = await db.courses.filter((c) => !c.deleted_at).toArray();
   return courses.sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
-export function useCourses(semesterId: string | null | undefined) {
-  return useQuery({
-    queryKey: ['courses', semesterId],
-    queryFn: () => loadCourses(semesterId as string),
-    enabled: !!semesterId,
-  });
+/**
+ * Every non-deleted course for the signed-in user. Views (a semester, standalone,
+ * or all) are derived from this in memory — Dexie can't query a null index, and
+ * course counts are small.
+ */
+export function useAllCourses() {
+  return useQuery({ queryKey: ['courses'], queryFn: loadAllCourses });
 }
 
 export function useCourse(courseId: string | undefined) {
@@ -33,7 +30,7 @@ export function useCourse(courseId: string | undefined) {
 
 export interface CourseInput {
   id?: string;
-  semester_id: string;
+  semester_id: string | null;
   name: string;
   color: string;
   schedule_days: ScheduleDay[];
@@ -58,7 +55,7 @@ export function useCourseMutations() {
     const course: Course = {
       id: input.id ?? crypto.randomUUID(),
       user_id: userId,
-      semester_id: input.semester_id,
+      semester_id: input.semester_id ?? null,
       name: input.name.trim(),
       color: input.color,
       schedule_days: input.schedule_days,
