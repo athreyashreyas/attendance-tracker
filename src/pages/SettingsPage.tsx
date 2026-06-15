@@ -245,6 +245,17 @@ function ReleaseRow({
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [showAllNotes, setShowAllNotes] = useState(false);
+
+  // Keep long release lists tidy: show a handful and let the rest expand.
+  const MAX_VISIBLE_NOTES = 4;
+  const condensed = release.notes.length > MAX_VISIBLE_NOTES;
+  const visibleNotes =
+    condensed && !showAllNotes
+      ? release.notes.slice(0, MAX_VISIBLE_NOTES)
+      : release.notes;
+  const hiddenCount = release.notes.length - MAX_VISIBLE_NOTES;
+
   return (
     <div
       className={`overflow-hidden rounded-card ${
@@ -260,18 +271,18 @@ function ReleaseRow({
           {release.version}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-sans text-sm font-medium text-ink-900">
-              {release.title}
+          <span className="block break-words font-sans text-sm font-medium text-ink-900">
+            {release.title}
+          </span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-2">
+            <span className="font-sans text-xs text-ink-500">
+              {formatLongDate(release.date)}
             </span>
             {release.major && (
-              <span className="shrink-0 rounded-full bg-sage-500 px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-white">
+              <span className="rounded-full bg-sage-500 px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-white">
                 Major
               </span>
             )}
-          </span>
-          <span className="font-sans text-xs text-ink-500">
-            {formatLongDate(release.date)}
           </span>
         </span>
         <motion.span
@@ -284,23 +295,34 @@ function ReleaseRow({
       </button>
       <AnimatePresence initial={false}>
         {open && (
-          <motion.ul
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="space-y-2 px-3.5 pb-3.5"
+            className="px-3.5 pb-3.5"
           >
-            {release.notes.map((note, i) => (
-              <li
-                key={i}
-                className="flex gap-2 font-sans text-sm leading-relaxed text-ink-700"
+            <ul className="space-y-2">
+              {visibleNotes.map((note, i) => (
+                <li
+                  key={i}
+                  className="flex gap-2 font-sans text-sm leading-relaxed text-ink-700"
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-400" />
+                  <span>{note}</span>
+                </li>
+              ))}
+            </ul>
+            {condensed && (
+              <button
+                type="button"
+                onClick={() => setShowAllNotes((s) => !s)}
+                className="mt-2.5 font-sans text-xs font-medium text-sage-600"
               >
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-400" />
-                <span>{note}</span>
-              </li>
-            ))}
-          </motion.ul>
+                {showAllNotes ? 'Show less' : `Show ${hiddenCount} more`}
+              </button>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
