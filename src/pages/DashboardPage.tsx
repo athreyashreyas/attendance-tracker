@@ -28,22 +28,27 @@ export function DashboardPage() {
 
   const hasStandalone = allCourses.some((c) => !c.semester_id);
 
-  // Classes already settled today (present/absent/cancelled) need no marking.
-  const decidedToday = useMemo(() => {
-    const set = new Set<string>();
+  // Sessions already on today's date: decided ones (present/absent/cancelled)
+  // need no marking; a planned one is an ad-hoc class today that still does.
+  const sessionToday = useMemo(() => {
+    const decided = new Set<string>();
+    const planned = new Set<string>();
     for (const s of allSessions ?? []) {
-      if (s.scheduled_date === today && s.status !== 'planned') {
-        set.add(s.course_id);
-      }
+      if (s.scheduled_date !== today) continue;
+      if (s.status === 'planned') planned.add(s.course_id);
+      else decided.add(s.course_id);
     }
-    return set;
+    return { decided, planned };
   }, [allSessions, today]);
 
-  // "Mark today" spans every class scheduled today (any filter) that still needs
-  // a mark, so cancelled or already-marked days don't keep nagging.
+  // "Mark today" spans every class with a class today (a recurring day or an
+  // ad-hoc session) that still needs a mark, regardless of the active filter,
+  // so cancelled or already-marked days don't keep nagging.
   const todayDow = new Date().getDay() as ScheduleDay;
   const toMarkToday = allCourses.filter(
-    (c) => c.schedule_days.includes(todayDow) && !decidedToday.has(c.id)
+    (c) =>
+      (c.schedule_days.includes(todayDow) || sessionToday.planned.has(c.id)) &&
+      !sessionToday.decided.has(c.id)
   );
 
   // A brand-new class defaults to the semester you're currently viewing.

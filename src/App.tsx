@@ -22,7 +22,21 @@ function AppInner() {
   }, []);
 
   useEffect(() => {
-    if (userId) void syncEngine.initialHydrate(userId);
+    if (!userId) return;
+    void syncEngine.initialHydrate(userId);
+    // Pull fresh changes whenever the app comes back to the foreground, so
+    // reopening it (e.g. on another device) reflects edits right away.
+    const refresh = () => {
+      if (document.visibilityState === 'visible') {
+        void syncEngine.initialHydrate(userId);
+      }
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [userId]);
 
   useRealtime(userId);

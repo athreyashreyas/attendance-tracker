@@ -34,6 +34,7 @@ export class SyncEngine {
   private flushing = false;
   private flushAgain = false;
   private networkAttached = false;
+  private hydrating = false;
 
   // ---------------------------------------------------------------- hydrate
 
@@ -42,6 +43,8 @@ export class SyncEngine {
    * non-deleted row; subsequent calls only pull rows changed since last sync.
    */
   async initialHydrate(userId: string): Promise<void> {
+    if (this.hydrating) return; // avoid overlapping pulls (e.g. focus + visibility)
+    this.hydrating = true;
     const key = LAST_SYNC_PREFIX + userId;
     const lastSync = localStorage.getItem(key);
     useSyncStore.getState().setIsSyncing(true);
@@ -59,10 +62,19 @@ export class SyncEngine {
           synced_at: now,
         }));
         await this.bulkPutLocal(table, rows as AnyLocal[]);
+        // Nudge the UI to re-read Dexie for the tables that actually changed,
+        // so a pulled-in edit (e.g. another device's colour change) renders at
+        // once instead of waiting for a navigation to refetch.
+        if (rows.length > 0 && typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('attend:sync', { detail: { table } })
+          );
+        }
       }
       localStorage.setItem(key, new Date().toISOString());
       useSyncStore.getState().setLastSyncAt(new Date());
     } finally {
+      this.hydrating = false;
       useSyncStore.getState().setIsSyncing(false);
     }
     void this.flushQueue();

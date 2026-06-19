@@ -24,9 +24,25 @@ export function QuickMarkPage() {
   const today = todayKey();
   const todayDow = new Date().getDay() as ScheduleDay;
 
+  // Classes with any session already on today's date (an ad-hoc class added for
+  // today, planned or marked). These belong in the deck even when today isn't
+  // one of the class's recurring days.
+  const courseIdsWithSessionToday = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of allSessions ?? []) {
+      if (s.scheduled_date === today) set.add(s.course_id);
+    }
+    return set;
+  }, [allSessions, today]);
+
   const scheduled = useMemo<Course[]>(
-    () => (courses ?? []).filter((c) => c.schedule_days.includes(todayDow)),
-    [courses, todayDow]
+    () =>
+      (courses ?? []).filter(
+        (c) =>
+          c.schedule_days.includes(todayDow) ||
+          courseIdsWithSessionToday.has(c.id)
+      ),
+    [courses, todayDow, courseIdsWithSessionToday]
   );
 
   // Only decided sessions count as "marked"; a planned class today still needs

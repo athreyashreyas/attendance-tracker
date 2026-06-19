@@ -14,6 +14,15 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.5.2',
+    date: '2026-06-19',
+    title: 'Planned classes turn up to be marked',
+    notes: [
+      'A class you scheduled ahead with "Not yet" now appears in the Mark tab and on the home screen when its day arrives, ready to mark, instead of waiting quietly in the calendar.',
+      'Changes from your other devices now show the moment you open the app, so a colour or class you changed on another device no longer waits for you to wander into the calendar.',
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-06-14',
     major: true,
