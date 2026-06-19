@@ -189,7 +189,7 @@ export function SettingsPage() {
             <ReleaseRow
               key={release.version}
               release={release}
-              defaultOpen={i === 0 || !!release.major}
+              defaultOpen={i === 0}
             />
           ))}
         </div>
