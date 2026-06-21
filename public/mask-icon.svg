@@ -1,6 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <path
-    fill="#000000"
-    d="M18 50 L30 38 L44 52 L70 26 L82 38 L44 76 Z"
-  />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g fill="#000000" transform="translate(-49.48,-14.98) scale(1.08)">
+    <circle cx="150" cy="230" r="14"/>
+    <polygon points="162.35,223.41 256.47,365.88 203.53,394.12 137.65,236.59"/>
+    <circle cx="230" cy="380" r="30"/>
+    <path d="M 203.17,366.58 Q 297.28,221.475 427.23,107.11 L 432.77,112.89 Q 312.72,238.525 256.83,393.42 Z"/>
+    <circle cx="430" cy="110" r="4"/>
+  </g>
 </svg>
