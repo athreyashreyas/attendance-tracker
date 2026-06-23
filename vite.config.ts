@@ -37,7 +37,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         background_color: '#FAF9F6',
-        theme_color: '#1E3A20',
+        theme_color: '#FAF9F6',
         orientation: 'any',
         lang: 'en-US',
         dir: 'ltr',
