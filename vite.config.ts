@@ -34,10 +34,14 @@ export default defineConfig({
         short_name: 'Attend',
         description: 'Track your university attendance',
         start_url: '/',
+        scope: '/',
         display: 'standalone',
         background_color: '#FAF9F6',
-        theme_color: '#FAF9F6',
+        theme_color: '#1E3A20',
         orientation: 'any',
+        lang: 'en-US',
+        dir: 'ltr',
+        categories: ['education', 'productivity'],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -50,6 +54,15 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
+          },
+          // Plain non-maskable icon, matching Nila's manifest. A "maskable"
+          // icon invites the OS to adapt/recolor it (the iOS glass/tint
+          // wash); a plain "any" entry asks it to be used as-is.
+          {
+            src: 'apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'any',
           },
         ],
       },
