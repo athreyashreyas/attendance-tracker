@@ -22,7 +22,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'apple-touch-icon-152x152.png',
+        'apple-touch-icon-167x167.png',
+        'mask-icon.svg',
+      ],
       manifest: {
         name: 'Attend',
         short_name: 'Attend',
