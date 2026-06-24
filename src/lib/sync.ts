@@ -48,6 +48,12 @@ export class SyncEngine {
     const key = LAST_SYNC_PREFIX + userId;
     const lastSync = localStorage.getItem(key);
     useSyncStore.getState().setIsSyncing(true);
+    // Track the newest server-side updated_at we actually see, so the next delta
+    // resumes from real data rather than the client clock. A client running
+    // ahead of the server would otherwise set a future cursor and skip rows
+    // another device wrote in the meantime.
+    let maxUpdatedMs = lastSync ? Date.parse(lastSync) : 0;
+    let maxUpdatedIso = lastSync ?? '';
     try {
       for (const table of TABLES) {
         let query = supabase.from(table).select('*').eq('user_id', userId);
@@ -61,6 +67,13 @@ export class SyncEngine {
           ...r,
           synced_at: now,
         }));
+        for (const r of data as RowByTable[typeof table][]) {
+          const ms = Date.parse(r.updated_at);
+          if (Number.isFinite(ms) && ms > maxUpdatedMs) {
+            maxUpdatedMs = ms;
+            maxUpdatedIso = r.updated_at;
+          }
+        }
         await this.bulkPutLocal(table, rows as AnyLocal[]);
         // Nudge the UI to re-read Dexie for the tables that actually changed,
         // so a pulled-in edit (e.g. another device's colour change) renders at
@@ -71,7 +84,9 @@ export class SyncEngine {
           );
         }
       }
-      localStorage.setItem(key, new Date().toISOString());
+      // Resume from the newest row seen; fall back to the client clock only on a
+      // first sync that returned nothing (an empty account).
+      localStorage.setItem(key, maxUpdatedIso || new Date().toISOString());
       useSyncStore.getState().setLastSyncAt(new Date());
     } finally {
       this.hydrating = false;

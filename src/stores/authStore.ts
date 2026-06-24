@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { clearLocalDb } from '../lib/db';
 import { syncEngine } from '../lib/sync';
+import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
   session: Session | null;
@@ -22,6 +23,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     await supabase.auth.signOut();
     syncEngine.reset();
     await clearLocalDb();
+    // Drop any cached query data so the next account doesn't briefly see the
+    // previous user's courses/sessions (the cache outlives the local DB clear).
+    queryClient.clear();
     set({ session: null, user: null, isLoading: false });
   },
 }));

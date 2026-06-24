@@ -27,7 +27,7 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
     pressTimer.current = setTimeout(() => {
       didLongPress.current = true;
       onEdit(course);
-    }, 200);
+    }, 500);
   }
   function endPress() {
     if (pressTimer.current) {

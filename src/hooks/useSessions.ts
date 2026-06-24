@@ -104,9 +104,10 @@ export function useSessionMutations() {
 
   /**
    * Cancel every scheduled class between two dates (inclusive) for the given
-   * courses — a holiday, break, or exam week. Existing present/absent marks are
-   * left untouched; only planned (unrecorded) or already-cancelled dates are set
-   * to cancelled. Returns the number of classes cancelled.
+   * courses — a holiday, break, or exam week. Any date that already has a
+   * session (present/absent/cancelled/planned) is left untouched; only
+   * scheduled dates with nothing recorded yet get a fresh cancelled session.
+   * Returns the number of classes cancelled.
    */
   async function markBreak(
     courses: Course[],
