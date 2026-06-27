@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { db } from './db';
 import { useSyncStore } from '../stores/syncStore';
 import { nowIso } from '../utils/dates';
+import { toRemote } from '../utils/records';
 import type {
   TableName,
   SyncOperation,
@@ -11,6 +12,7 @@ import type {
   Semester,
   Course,
   Session,
+  LocalRecord,
   LocalSemester,
   LocalCourse,
   LocalSession,
@@ -126,6 +128,22 @@ export class SyncEngine {
     });
     await this.refreshPendingCount();
     void this.flushQueue();
+  }
+
+  /**
+   * Soft-delete a record: tombstone it (set `deleted_at`/`updated_at`) and queue
+   * the upsert. Takes the local row and strips Dexie-only fields for the wire.
+   */
+  async softDelete<T extends TableName>(
+    table: T,
+    record: RowByTable[T] & LocalRecord
+  ): Promise<void> {
+    const now = nowIso();
+    await this.writeLocal(table, 'DELETE', {
+      ...toRemote(record),
+      deleted_at: now,
+      updated_at: now,
+    } as unknown as RowByTable[T]);
   }
 
   // --------------------------------------------------------------- flushing

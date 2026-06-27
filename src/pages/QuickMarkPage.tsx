@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { Check, X, ChevronLeft } from 'lucide-react';
-import { useAllCourses } from '../hooks/useCourses';
-import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
+import { useSessionMutations } from '../hooks/useSessions';
+import { useTodayMarking } from '../hooks/useTodayMarking';
 import { todayKey, formatSessionDate } from '../utils/dates';
 import { hexToRgba } from '../lib/colors';
 import { spring } from '../lib/motion';
-import type { Course, ScheduleDay, Session, SessionStatus } from '../types';
+import type { Course, SessionStatus } from '../types';
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 280 : -280, opacity: 0 }),
@@ -17,45 +17,10 @@ const slideVariants = {
 
 export function QuickMarkPage() {
   const navigate = useNavigate();
-  const { data: courses } = useAllCourses();
-  const { data: allSessions } = useAllSessions();
+  const { deck: scheduled, markedToday, isLoading } = useTodayMarking();
   const { markSession } = useSessionMutations();
 
   const today = todayKey();
-  const todayDow = new Date().getDay() as ScheduleDay;
-
-  // Classes with any session already on today's date (an ad-hoc class added for
-  // today, planned or marked). These belong in the deck even when today isn't
-  // one of the class's recurring days.
-  const courseIdsWithSessionToday = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of allSessions ?? []) {
-      if (s.scheduled_date === today) set.add(s.course_id);
-    }
-    return set;
-  }, [allSessions, today]);
-
-  const scheduled = useMemo<Course[]>(
-    () =>
-      (courses ?? []).filter(
-        (c) =>
-          c.schedule_days.includes(todayDow) ||
-          courseIdsWithSessionToday.has(c.id)
-      ),
-    [courses, todayDow, courseIdsWithSessionToday]
-  );
-
-  // Only decided sessions count as "marked"; a planned class today still needs
-  // a real present/absent/cancelled, so it stays in the deck.
-  const markedToday = useMemo(() => {
-    const map = new Map<string, Session>();
-    for (const s of allSessions ?? []) {
-      if (s.scheduled_date === today && s.status !== 'planned') {
-        map.set(s.course_id, s);
-      }
-    }
-    return map;
-  }, [allSessions, today]);
 
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -66,13 +31,11 @@ export function QuickMarkPage() {
   // already marked, land straight on the "all done" screen — returning to this
   // tab should never offer to re-mark a finished day.
   useEffect(() => {
-    if (initialized.current || courses === undefined || allSessions === undefined) {
-      return;
-    }
+    if (initialized.current || isLoading) return;
     initialized.current = true;
     const firstUnmarked = scheduled.findIndex((c) => !markedToday.has(c.id));
     setIndex(firstUnmarked === -1 ? scheduled.length : firstUnmarked);
-  }, [courses, allSessions, scheduled, markedToday]);
+  }, [isLoading, scheduled, markedToday]);
 
   const done = scheduled.length > 0 && index >= scheduled.length;
 

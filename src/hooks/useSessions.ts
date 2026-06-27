@@ -3,7 +3,6 @@ import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { nowIso, toDateKey, fromDateKey } from '../utils/dates';
-import { toRemote } from '../utils/records';
 import { generateExpectedDates } from '../lib/calculations';
 import type { Course, Session, SessionStatus } from '../types';
 
@@ -143,12 +142,7 @@ export function useSessionMutations() {
   async function deleteSession(id: string): Promise<void> {
     const session = await db.sessions.get(id);
     if (!session) return;
-    const now = nowIso();
-    await syncEngine.writeLocal('sessions', 'DELETE', {
-      ...toRemote(session),
-      deleted_at: now,
-      updated_at: now,
-    });
+    await syncEngine.softDelete('sessions', session);
     invalidate();
   }
 

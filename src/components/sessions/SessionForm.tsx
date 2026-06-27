@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
+import { DateInput } from '../ui/DateInput';
 import {
   useSessionMutations,
   findSessionForDate,
@@ -92,12 +93,7 @@ export function SessionForm({
           <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
             Date
           </label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border-0 bg-parchment-50 px-3.5 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-          />
+          <DateInput value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
 
         <div>

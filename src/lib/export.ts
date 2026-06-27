@@ -1,17 +1,8 @@
 import { format } from 'date-fns';
 import { db } from './db';
 import { fromDateKey, todayKey } from '../utils/dates';
-import type { Semester, Course, Session, LocalRecord } from '../types';
-
-/** Remove Dexie-only fields so exports contain clean domain rows. */
-function stripLocal<T extends LocalRecord>(
-  record: T
-): Omit<T, 'synced_at' | '_local_only'> {
-  const clean: Partial<T> = { ...record };
-  delete clean.synced_at;
-  delete clean._local_only;
-  return clean as Omit<T, 'synced_at' | '_local_only'>;
-}
+import { toRemote } from '../utils/records';
+import type { Semester, Course, Session } from '../types';
 
 function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -51,9 +42,9 @@ export async function exportAllDataAsJSON(userId: string): Promise<void> {
   const payload = {
     exported_at: new Date().toISOString(),
     user_id: userId,
-    semesters: semesters.map((s) => stripLocal(s)) as Semester[],
-    courses: courses.map((c) => stripLocal(c)) as Course[],
-    sessions: sessions.map((s) => stripLocal(s)) as Session[],
+    semesters: semesters.map((s) => toRemote(s)) as Semester[],
+    courses: courses.map((c) => toRemote(c)) as Course[],
+    sessions: sessions.map((s) => toRemote(s)) as Session[],
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], {

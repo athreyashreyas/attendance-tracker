@@ -14,6 +14,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { BottomSheet } from '../components/ui/BottomSheet';
+import { DateInput } from '../components/ui/DateInput';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -414,23 +415,13 @@ function SemesterFormSheet({
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
               Start
             </label>
-            <input
-              type="date"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-            />
+            <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div>
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
               End
             </label>
-            <input
-              type="date"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-            />
+            <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
         </div>
         {error && <p className="font-sans text-sm text-rose-600">{error}</p>}

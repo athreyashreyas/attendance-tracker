@@ -3,7 +3,6 @@ import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { nowIso } from '../utils/dates';
-import { toRemote } from '../utils/records';
 import type { Semester } from '../types';
 
 async function loadSemesters(): Promise<Semester[]> {
@@ -78,17 +77,9 @@ export function useSemesterMutations() {
 
     // Soft-delete the semester and its (session-free) courses.
     for (const c of courses) {
-      await syncEngine.writeLocal('courses', 'DELETE', {
-        ...toRemote(c),
-        deleted_at: nowIso(),
-        updated_at: nowIso(),
-      });
+      await syncEngine.softDelete('courses', c);
     }
-    await syncEngine.writeLocal('semesters', 'DELETE', {
-      ...toRemote(semester),
-      deleted_at: nowIso(),
-      updated_at: nowIso(),
-    });
+    await syncEngine.softDelete('semesters', semester);
     void queryClient.invalidateQueries({ queryKey: ['courses'] });
     invalidate();
     return true;

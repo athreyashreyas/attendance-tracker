@@ -3,7 +3,6 @@ import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { nowIso } from '../utils/dates';
-import { toRemote } from '../utils/records';
 import type { Course, ScheduleDay } from '../types';
 
 async function loadAllCourses(): Promise<Course[]> {
@@ -74,7 +73,6 @@ export function useCourseMutations() {
   async function deleteCourse(id: string): Promise<void> {
     const course = await db.courses.get(id);
     if (!course) return;
-    const now = nowIso();
     // Soft-delete the course and all of its sessions.
     const sessions = await db.sessions
       .where('course_id')
@@ -82,17 +80,9 @@ export function useCourseMutations() {
       .filter((s) => !s.deleted_at)
       .toArray();
     for (const s of sessions) {
-      await syncEngine.writeLocal('sessions', 'DELETE', {
-        ...toRemote(s),
-        deleted_at: now,
-        updated_at: now,
-      });
+      await syncEngine.softDelete('sessions', s);
     }
-    await syncEngine.writeLocal('courses', 'DELETE', {
-      ...toRemote(course),
-      deleted_at: now,
-      updated_at: now,
-    });
+    await syncEngine.softDelete('courses', course);
     invalidate();
     void queryClient.invalidateQueries({ queryKey: ['sessions'] });
   }

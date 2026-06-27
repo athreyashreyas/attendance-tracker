@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { formatSessionDate } from '../../utils/dates';
+import { STATUS_LABEL } from '../../lib/status';
 import { listItem } from '../../lib/motion';
 import type { Session, SessionStatus } from '../../types';
 
@@ -8,15 +9,14 @@ interface SessionItemProps {
   onEdit: (session: Session) => void;
 }
 
-const STATUS_STYLE: Record<SessionStatus, { label: string; className: string }> = {
-  present: { label: 'Present', className: 'bg-sage-500 text-white' },
-  absent: { label: 'Absent', className: 'bg-rose-500 text-white' },
-  cancelled: { label: 'Cancelled', className: 'bg-parchment-300 text-ink-500' },
-  planned: { label: 'Scheduled', className: 'bg-parchment-200 text-ink-500' },
+const STATUS_CLASS: Record<SessionStatus, string> = {
+  present: 'bg-sage-500 text-white',
+  absent: 'bg-rose-500 text-white',
+  cancelled: 'bg-parchment-300 text-ink-500',
+  planned: 'bg-parchment-200 text-ink-500',
 };
 
 export function SessionItem({ session, onEdit }: SessionItemProps) {
-  const style = STATUS_STYLE[session.status];
 
   return (
     <motion.button
@@ -41,9 +41,9 @@ export function SessionItem({ session, onEdit }: SessionItemProps) {
         initial={{ scale: 0.9 }}
         animate={{ scale: [0.9, 1.1, 1] }}
         transition={{ duration: 0.25 }}
-        className={`shrink-0 rounded-full px-2.5 py-1 font-sans text-xs font-medium ${style.className}`}
+        className={`shrink-0 rounded-full px-2.5 py-1 font-sans text-xs font-medium ${STATUS_CLASS[session.status]}`}
       >
-        {style.label}
+        {STATUS_LABEL[session.status]}
       </motion.span>
     </motion.button>
   );

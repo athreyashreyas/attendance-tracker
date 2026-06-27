@@ -14,6 +14,7 @@ import { MonthCalendar, type DayDot } from '../components/calendar/MonthCalendar
 import { ViewFilterBar } from '../components/courses/ViewFilterBar';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { Button } from '../components/ui/Button';
+import { DateInput } from '../components/ui/DateInput';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { useCourseView } from '../hooks/useCourseView';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
@@ -426,23 +427,13 @@ function BreakSheet({
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
               From
             </label>
-            <input
-              type="date"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-            />
+            <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div>
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
               To
             </label>
-            <input
-              type="date"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-            />
+            <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
         </div>
 

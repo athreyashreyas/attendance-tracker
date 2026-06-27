@@ -4,6 +4,7 @@ import { Minus, Plus, Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { DateInput } from '../ui/DateInput';
 import { CourseColorPicker } from './CourseColorPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { db } from '../../lib/db';
@@ -236,23 +237,13 @@ export function CourseForm({
               <label className="mb-1 block font-sans text-[11px] text-ink-500">
                 First class
               </label>
-              <input
-                type="date"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-              />
+              <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div>
               <label className="mb-1 block font-sans text-[11px] text-ink-500">
                 Last class
               </label>
-              <input
-                type="date"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
-              />
+              <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
           </div>
         </div>

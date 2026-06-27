@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CalendarCheck } from 'lucide-react';
@@ -11,10 +11,9 @@ import { CourseCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { Fab } from '../components/ui/Fab';
 import { useCourseView } from '../hooks/useCourseView';
-import { useAllSessions } from '../hooks/useSessions';
-import { todayKey } from '../utils/dates';
+import { useTodayMarking } from '../hooks/useTodayMarking';
 import { listContainer, spring } from '../lib/motion';
-import type { Course, ScheduleDay } from '../types';
+import type { Course } from '../types';
 
 export function DashboardPage() {
   const { filter, setFilter, courses, allCourses, semesters, isLoading, semesterOf } =
@@ -23,33 +22,11 @@ export function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
 
-  const { data: allSessions } = useAllSessions();
-  const today = todayKey();
-
   const hasStandalone = allCourses.some((c) => !c.semester_id);
 
-  // Sessions already on today's date: decided ones (present/absent/cancelled)
-  // need no marking; a planned one is an ad-hoc class today that still does.
-  const sessionToday = useMemo(() => {
-    const decided = new Set<string>();
-    const planned = new Set<string>();
-    for (const s of allSessions ?? []) {
-      if (s.scheduled_date !== today) continue;
-      if (s.status === 'planned') planned.add(s.course_id);
-      else decided.add(s.course_id);
-    }
-    return { decided, planned };
-  }, [allSessions, today]);
-
-  // "Mark today" spans every class with a class today (a recurring day or an
-  // ad-hoc session) that still needs a mark, regardless of the active filter,
-  // so cancelled or already-marked days don't keep nagging.
-  const todayDow = new Date().getDay() as ScheduleDay;
-  const toMarkToday = allCourses.filter(
-    (c) =>
-      (c.schedule_days.includes(todayDow) || sessionToday.planned.has(c.id)) &&
-      !sessionToday.decided.has(c.id)
-  );
+  // Classes still needing a mark today, regardless of the active filter, so
+  // cancelled or already-marked days don't keep nagging.
+  const { toMark: toMarkToday } = useTodayMarking();
 
   // A brand-new class defaults to the semester you're currently viewing.
   const defaultSemesterId =
