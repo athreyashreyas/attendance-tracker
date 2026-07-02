@@ -16,7 +16,7 @@ export function Fab({ onClick, label }: FabProps) {
       type="button"
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-8 md:right-8"
+      className="fixed bottom-[calc(5rem+var(--safe-bottom))] right-[calc(1.5rem+var(--safe-right))] z-30 flex h-14 w-14 items-center justify-center rounded-fab bg-sage-500 text-white shadow-lg md:bottom-[calc(2rem+var(--safe-bottom))] md:right-[calc(2rem+var(--safe-right))]"
       aria-label={label}
     >
       <Plus size={26} />
