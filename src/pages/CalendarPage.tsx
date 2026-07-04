@@ -9,7 +9,6 @@ import {
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, CalendarX2, Plus, Check } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
-import { SyncIndicator } from '../components/ui/SyncIndicator';
 import { MonthCalendar, type DayDot } from '../components/calendar/MonthCalendar';
 import { ViewFilterBar } from '../components/courses/ViewFilterBar';
 import { BottomSheet } from '../components/ui/BottomSheet';
@@ -156,7 +155,6 @@ export function CalendarPage() {
             >
               <CalendarX2 size={18} />
             </button>
-            <SyncIndicator />
           </div>
         }
       />
