@@ -18,7 +18,7 @@ export const CHANGELOG: Release[] = [
     date: '2026-07-03',
     title: 'Sync on demand, and a quieter ride',
     notes: [
-      'The little dot in the top corner is now a button. Tap it to see your sync status and push a manual sync whenever you like — useful after a patchy connection.',
+      'The little dot in the top corner is now a button. Tap it to see your sync status and push a manual sync whenever you like: useful after a patchy connection.',
       'Animations now respect your device\'s Reduce Motion setting, so everything goes instant if you prefer it that way.',
       'Classes in the list slide into place when you switch filters, instead of snapping.',
       'The app opens a touch quicker now that each page loads only when you navigate to it.',
