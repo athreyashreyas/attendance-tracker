@@ -65,7 +65,7 @@ export function SyncDot() {
         onClick={() => setOpen(true)}
         className="fixed z-40 flex h-8 w-8 items-center justify-center"
         style={{
-          top: 'calc(var(--safe-top) + 0.6rem)',
+          top: 'var(--safe-top)',
           right: 'calc(var(--safe-right) + 0.6rem)',
         }}
         aria-label={`Sync status: ${heading}`}

@@ -10,14 +10,14 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, left, right }: PageHeaderProps) {
   return (
     <header className="mb-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           {left}
           <h1 className="truncate font-serif text-2xl leading-tight text-ink-900">
             {title}
           </h1>
         </div>
-        {right && <div className="mr-8 mt-[0.6rem] shrink-0">{right}</div>}
+        {right && <div className="mr-8 shrink-0">{right}</div>}
       </div>
       {subtitle && (
         <p className="mt-0.5 truncate font-sans text-sm text-ink-500">
