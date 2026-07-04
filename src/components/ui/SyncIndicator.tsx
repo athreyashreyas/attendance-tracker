@@ -1,57 +1,111 @@
 import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useAuthStore } from '../../stores/authStore';
+import { syncEngine } from '../../lib/sync';
 import { useSyncQueue } from '../../hooks/useSyncQueue';
+import { Modal } from './Modal';
+import { Button } from './Button';
+import { APP_VERSION } from '../../lib/changelog';
 
-type State = 'offline' | 'pending' | 'synced';
+type SyncState = 'offline' | 'syncing' | 'synced';
 
-export function SyncIndicator() {
+const STATES: Record<SyncState, { dot: string; heading: string; body: string }> = {
+  offline: {
+    dot: 'bg-rose-500',
+    heading: 'Offline',
+    body: 'Changes are saved here and will sync when you reconnect.',
+  },
+  syncing: {
+    dot: 'bg-amber-500',
+    heading: 'Syncing',
+    body: 'Uploading your latest changes to your account.',
+  },
+  synced: {
+    dot: 'bg-sage-500',
+    heading: 'Synced',
+    body: 'Everything is backed up to your account.',
+  },
+};
+
+/**
+ * Fixed dot in the top-right corner of the authenticated shell. Passive status
+ * indicator (offline / syncing / synced) and tappable button that opens a modal
+ * with a manual "Sync now" trigger and the current app version.
+ */
+export function SyncDot() {
   const { isOnline, pendingCount, isSyncing } = useSyncQueue();
-  const [showLabel, setShowLabel] = useState(false);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState(false);
 
-  const state: State = !isOnline
+  const state: SyncState = !isOnline
     ? 'offline'
-    : pendingCount > 0 || isSyncing
-      ? 'pending'
+    : pendingCount > 0 || isSyncing || running
+      ? 'syncing'
       : 'synced';
 
-  const dotColor =
-    state === 'offline'
-      ? 'bg-rose-500'
-      : state === 'pending'
-        ? 'bg-amber-500'
-        : 'bg-sage-500';
+  const { dot, heading, body } = STATES[state];
+  const busy = running || isSyncing;
 
-  const label =
-    state === 'offline'
-      ? 'Offline'
-      : state === 'pending'
-        ? `${pendingCount} change${pendingCount === 1 ? '' : 's'} pending`
-        : 'Synced';
+  async function handleSync() {
+    if (!isOnline || busy || !userId) return;
+    setRunning(true);
+    try {
+      await syncEngine.initialHydrate(userId);
+      void navigator.serviceWorker?.ready.then((r) => r.update());
+    } finally {
+      setRunning(false);
+    }
+  }
 
   return (
-    <button
-      type="button"
-      onClick={() => setShowLabel((v) => !v)}
-      className="flex items-center gap-1.5"
-      aria-label={label}
-    >
-      <span
-        className={`block h-2.5 w-2.5 rounded-full ${dotColor} ${
-          state === 'pending' ? 'animate-pulse-dot' : ''
-        }`}
-      />
-      <AnimatePresence>
-        {showLabel && (
-          <motion.span
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -4 }}
-            className="font-sans text-xs text-ink-500"
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed z-40 flex h-8 w-8 items-center justify-center"
+        style={{
+          top: 'calc(var(--safe-top) + 0.6rem)',
+          right: 'calc(var(--safe-right) + 0.6rem)',
+        }}
+        aria-label={`Sync status: ${heading}`}
+      >
+        <motion.span
+          className={`block h-2.5 w-2.5 rounded-full ${dot}`}
+          animate={
+            state === 'syncing'
+              ? { opacity: [1, 0.35, 1], scale: [1, 1.15, 1] }
+              : { opacity: 1, scale: 1 }
+          }
+          transition={
+            state === 'syncing'
+              ? { duration: 1.2, repeat: Infinity, ease: 'easeInOut' }
+              : { duration: 0.2 }
+          }
+        />
+      </button>
+
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div className="mb-4 flex items-center gap-3">
+          <span className={`block h-3 w-3 shrink-0 rounded-full ${dot}`} />
+          <p className="font-serif text-xl text-ink-900">{heading}</p>
+        </div>
+        <p className="mb-5 font-sans text-sm text-ink-500">{body}</p>
+        {isOnline ? (
+          <Button
+            className="w-full"
+            onClick={() => void handleSync()}
+            disabled={busy}
           >
-            {label}
-          </motion.span>
+            {busy ? 'Syncing…' : state === 'synced' ? 'Sync again' : 'Sync now'}
+          </Button>
+        ) : (
+          <p className="font-sans text-sm text-ink-300">Come back online to sync.</p>
         )}
-      </AnimatePresence>
-    </button>
+        <p className="mt-5 text-center font-sans text-xs text-ink-300">
+          Attend {APP_VERSION}
+        </p>
+      </Modal>
+    </>
   );
 }

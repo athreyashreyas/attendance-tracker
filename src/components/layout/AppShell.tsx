@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
+import { SyncDot } from '../ui/SyncIndicator';
 
 /**
  * App shell sized via the html element's height (see index.css), which equals
@@ -12,6 +13,7 @@ import { SideNav } from './SideNav';
 export function AppShell() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-parchment-100 md:flex-row">
+      <SyncDot />
       <SideNav />
       <main className="flex min-h-0 flex-1 flex-col pt-safe">
         <div className="scroll-ios min-h-0 flex-1 overflow-y-auto">

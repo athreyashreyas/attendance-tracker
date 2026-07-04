@@ -15,7 +15,6 @@ import { useSessions } from '../hooks/useSessions';
 import { useSemesters } from '../hooks/useSemesters';
 import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
 import { TONE_CLASSES } from '../lib/status';
-import { WatercolorWash } from '../components/ui/WatercolorWash';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
 import type { Session, TermProjection } from '../types';
@@ -75,8 +74,7 @@ export function CourseDetailPage() {
   }
 
   return (
-    <div className="relative mx-auto max-w-3xl overflow-hidden pb-24 md:pb-2">
-      <WatercolorWash color={course.color} />
+    <div className="relative mx-auto max-w-3xl pb-24 md:pb-2">
       <PageHeader
         title={course.name}
         subtitle={semester?.name ?? 'Standalone'}

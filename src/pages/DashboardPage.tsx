@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CalendarCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
-import { SyncIndicator } from '../components/ui/SyncIndicator';
 import { CourseCard } from '../components/courses/CourseCard';
 import { CourseForm } from '../components/courses/CourseForm';
 import { ViewFilterBar } from '../components/courses/ViewFilterBar';
@@ -52,7 +51,7 @@ export function DashboardPage() {
 
   return (
     <div className="relative pb-24 md:pb-2">
-      <PageHeader title="Attend" subtitle={subtitle} right={<SyncIndicator />} />
+      <PageHeader title="Attend" subtitle={subtitle} />
 
       <ViewFilterBar
         filter={filter}
