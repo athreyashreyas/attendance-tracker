@@ -28,9 +28,11 @@ const STATES: Record<SyncState, { dot: string; heading: string; body: string }> 
 };
 
 /**
- * Fixed dot in the top-right corner of the authenticated shell. Passive status
- * indicator (offline / syncing / synced) and tappable button that opens a modal
- * with a manual "Sync now" trigger and the current app version.
+ * Dot anchored to the top-right of the scroll area (not the viewport), so it
+ * scrolls away with the page instead of hovering over content. Reachable by
+ * scrolling to the top. Passive status indicator (offline / syncing / synced)
+ * and tappable button that opens a modal with a manual "Sync now" trigger and
+ * the current app version.
  */
 export function SyncDot() {
   const { isOnline, pendingCount, isSyncing } = useSyncQueue();
@@ -63,9 +65,9 @@ export function SyncDot() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed z-40 flex h-8 w-8 items-center justify-center"
+        className="absolute z-40 flex h-8 w-8 items-center justify-center"
         style={{
-          top: 'var(--safe-top)',
+          top: 0,
           right: 'calc(var(--safe-right) + 0.6rem)',
         }}
         aria-label={`Sync status: ${heading}`}
