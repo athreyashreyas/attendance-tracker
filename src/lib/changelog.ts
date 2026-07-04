@@ -21,7 +21,7 @@ export const CHANGELOG: Release[] = [
       'The little dot in the top corner is now a button. Tap it to see your sync status and push a manual sync whenever you like: useful after a patchy connection.',
       'Animations now respect your device\'s Reduce Motion setting, so everything goes instant if you prefer it that way.',
       'Classes in the list slide into place when you switch filters, instead of snapping.',
-      'The app opens a touch quicker now that each page loads only when you navigate to it.',
+      'Navigating around the app is instant with no loading buffers between screens.',
     ],
   },
   {
