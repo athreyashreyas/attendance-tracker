@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { spring } from '../../lib/motion';
+import { useFocusTrap } from '../../lib/useFocusTrap';
+import { useDismiss } from '../../lib/useDismiss';
 
 interface ModalProps {
   open: boolean;
@@ -11,6 +13,11 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(panelRef, open);
+  useDismiss(onClose, open);
+
   return createPortal(
     <AnimatePresence>
       {open && (
@@ -28,6 +35,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
             exit={{ opacity: 0 }}
           />
           <motion.div
+            ref={panelRef}
             className="relative w-full max-w-sm rounded-sheet bg-parchment-50 p-5 shadow-xl"
             initial={{ opacity: 0, scale: 0.95, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

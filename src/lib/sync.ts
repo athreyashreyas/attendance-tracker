@@ -174,7 +174,12 @@ export class SyncEngine {
           error = await this.pushItem(item);
         }
         if (error) {
-          const next = item.retry_count + 1;
+          // A server-side code means the server actively rejected the write
+          // (RLS policy, constraint, bad payload). Retrying will never help —
+          // drop it immediately. Network errors and unknown failures get retried.
+          const isServerRejection =
+            !!this.errorCode(error) && !this.isAuthError(error);
+          const next = isServerRejection ? -1 : item.retry_count + 1;
           await db.sync_queue.update(item.id!, {
             retry_count: next >= MAX_RETRIES ? -1 : next,
           });

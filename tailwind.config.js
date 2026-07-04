@@ -47,6 +47,15 @@ export default {
         sheet: '16px',
         fab: '24px',
       },
+      boxShadow: {
+        // Warm-tinted shadows use the darkest ink tone (rgba(35,25,15)) so they
+        // look cohesive on the parchment palette rather than neutral grey.
+        sm: '0 1px 3px 0 rgba(35,25,15,0.08), 0 1px 2px -1px rgba(35,25,15,0.04)',
+        DEFAULT: '0 4px 6px -1px rgba(35,25,15,0.08), 0 2px 4px -2px rgba(35,25,15,0.04)',
+        lg: '0 10px 15px -3px rgba(35,25,15,0.08), 0 4px 6px -4px rgba(35,25,15,0.04)',
+        xl: '0 20px 25px -5px rgba(35,25,15,0.10), 0 8px 10px -6px rgba(35,25,15,0.04)',
+        '2xl': '0 25px 50px -12px rgba(35,25,15,0.18)',
+      },
       keyframes: {
         'pulse-dot': {
           '0%, 100%': { opacity: '1' },

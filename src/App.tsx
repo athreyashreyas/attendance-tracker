@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { RouterProvider } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
 import { queryClient } from './lib/queryClient';
 import { router } from './router';
 import { initAuth, useAuthStore } from './stores/authStore';
@@ -53,8 +54,10 @@ function AppInner() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppInner />
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      <MotionConfig reducedMotion="user">
+        <AppInner />
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

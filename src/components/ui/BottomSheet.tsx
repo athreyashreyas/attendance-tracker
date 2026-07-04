@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AnimatePresence,
@@ -7,6 +7,8 @@ import {
   type PanInfo,
 } from 'framer-motion';
 import { spring } from '../../lib/motion';
+import { useFocusTrap } from '../../lib/useFocusTrap';
+import { useDismiss } from '../../lib/useDismiss';
 
 interface BottomSheetProps {
   open: boolean;
@@ -16,7 +18,11 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
+
+  useFocusTrap(panelRef, open);
+  useDismiss(onClose, open);
 
   function handleDragEnd(
     _event: MouseEvent | TouchEvent | PointerEvent,
@@ -43,6 +49,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
           />
           <motion.div
+            ref={panelRef}
             className="scroll-ios relative max-h-[90%] overflow-y-auto rounded-t-sheet bg-parchment-50 pt-3 shadow-2xl safe-bottom"
             style={{
               marginBottom: 'var(--keyboard-height, 0px)',

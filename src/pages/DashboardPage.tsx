@@ -98,12 +98,22 @@ export function DashboardPage() {
       {showEmpty && (
         <div className="mt-16 flex flex-col items-center px-6 text-center">
           <h2 className="font-serif text-2xl text-ink-900">
-            {allCourses.length === 0 ? 'Add your first class' : 'Nothing here yet'}
+            {allCourses.length === 0
+              ? 'Add your first class'
+              : filter === 'other'
+                ? 'No standalone classes'
+                : filter !== 'all'
+                  ? `Nothing in ${semesters.find((s) => s.id === filter)?.name ?? 'this semester'}`
+                  : 'Nothing here yet'}
           </h2>
           <p className="mt-2 font-sans text-sm text-ink-500">
             {allCourses.length === 0
               ? 'Track attendance for each class and stay above your threshold.'
-              : 'No classes in this view. Add one or switch filters.'}
+              : filter === 'other'
+                ? 'Classes without a semester show up here.'
+                : filter !== 'all'
+                  ? 'Add a class to this semester, or switch to All to see everything.'
+                  : 'Add a class to get started.'}
           </p>
           <Button className="mt-6" size="lg" onClick={openAdd}>
             <span className="font-serif text-lg leading-none">+</span>

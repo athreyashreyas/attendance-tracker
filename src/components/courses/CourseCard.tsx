@@ -43,6 +43,7 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
 
   return (
     <motion.div
+      layout
       variants={listItem}
       whileTap={{ scale: 0.98 }}
       onPointerDown={startPress}

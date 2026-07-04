@@ -23,7 +23,11 @@ export function ViewFilterBar({
   if (semesters.length === 0) return null;
 
   return (
-    <div className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <div
+      role="radiogroup"
+      aria-label="View filter"
+      className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1"
+    >
       <Chip label="All" active={filter === 'all'} onClick={() => onChange('all')} />
       {semesters.map((s) => (
         <Chip
@@ -56,6 +60,8 @@ function Chip({
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={active}
       onClick={onClick}
       className={`shrink-0 rounded-full px-3.5 py-1.5 font-sans text-sm font-medium transition-colors ${
         active ? 'bg-sage-500 text-white' : 'bg-parchment-200 text-ink-500'

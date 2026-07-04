@@ -52,6 +52,21 @@
     -webkit-appearance: none;
     margin: 0;
   }
+
+  /* Themed keyboard focus ring for all interactive elements. Only visible on
+     keyboard navigation (not mouse/touch), so it never clutters touch users. */
+  :focus-visible {
+    outline: none;
+    @apply ring-2 ring-sage-400 ring-offset-2 ring-offset-parchment-100;
+  }
+
+  /* MotionConfig handles Framer Motion, but plain CSS animations (animate-pulse-dot
+     on the sync indicator) need an explicit opt-out for motion-sensitive users. */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-dot {
+      animation: none;
+    }
+  }
 }
 
 @layer utilities {

@@ -1,14 +1,25 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AppShell } from './components/layout/AppShell';
 import { AuthPage } from './pages/AuthPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { CourseDetailPage } from './pages/CourseDetailPage';
-import { QuickMarkPage } from './pages/QuickMarkPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './hooks/useAuth';
+
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const CourseDetailPage = lazy(() =>
+  import('./pages/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage }))
+);
+const QuickMarkPage = lazy(() =>
+  import('./pages/QuickMarkPage').then((m) => ({ default: m.QuickMarkPage }))
+);
+const CalendarPage = lazy(() =>
+  import('./pages/CalendarPage').then((m) => ({ default: m.CalendarPage }))
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
 
 function Splash() {
   return (
@@ -16,6 +27,10 @@ function Splash() {
       <Loader2 size={28} className="animate-spin text-sage-500" />
     </div>
   );
+}
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<Splash />}>{children}</Suspense>;
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -41,11 +56,26 @@ export const router = createHashRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: '/dashboard', element: <DashboardPage /> },
-      { path: '/courses/:id', element: <CourseDetailPage /> },
-      { path: '/quick-mark', element: <QuickMarkPage /> },
-      { path: '/calendar', element: <CalendarPage /> },
-      { path: '/settings', element: <SettingsPage /> },
+      {
+        path: '/dashboard',
+        element: <LazyPage><DashboardPage /></LazyPage>,
+      },
+      {
+        path: '/courses/:id',
+        element: <LazyPage><CourseDetailPage /></LazyPage>,
+      },
+      {
+        path: '/quick-mark',
+        element: <LazyPage><QuickMarkPage /></LazyPage>,
+      },
+      {
+        path: '/calendar',
+        element: <LazyPage><CalendarPage /></LazyPage>,
+      },
+      {
+        path: '/settings',
+        element: <LazyPage><SettingsPage /></LazyPage>,
+      },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
