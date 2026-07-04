@@ -17,7 +17,7 @@ export function PageHeader({ title, subtitle, left, right }: PageHeaderProps) {
             {title}
           </h1>
         </div>
-        {right && <div className="shrink-0">{right}</div>}
+        {right && <div className="mr-8 shrink-0">{right}</div>}
       </div>
       {subtitle && (
         <p className="mt-0.5 truncate font-sans text-sm text-ink-500">
