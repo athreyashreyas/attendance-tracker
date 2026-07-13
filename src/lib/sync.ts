@@ -56,6 +56,10 @@ export class SyncEngine {
     // another device wrote in the meantime.
     let maxUpdatedMs = lastSync ? Date.parse(lastSync) : 0;
     let maxUpdatedIso = lastSync ?? '';
+    // The cursor is shared across tables, so it must only advance when every
+    // table pulled cleanly: advancing past rows a failed table never delivered
+    // would skip them on every future delta.
+    let anyTableFailed = false;
     try {
       for (const table of TABLES) {
         let query = supabase.from(table).select('*').eq('user_id', userId);
@@ -63,7 +67,10 @@ export class SyncEngine {
           ? query.gt('updated_at', lastSync) // delta: include soft-deletes
           : query.is('deleted_at', null); // first load: skip tombstones
         const { data, error } = await query;
-        if (error || !data) continue;
+        if (error || !data) {
+          anyTableFailed = true;
+          continue;
+        }
         const now = nowIso();
         const rows = (data as RowByTable[typeof table][]).map((r) => ({
           ...r,
@@ -87,8 +94,11 @@ export class SyncEngine {
         }
       }
       // Resume from the newest row seen; fall back to the client clock only on a
-      // first sync that returned nothing (an empty account).
-      localStorage.setItem(key, maxUpdatedIso || new Date().toISOString());
+      // first sync that returned nothing (an empty account). Keep the old cursor
+      // if any table failed, so its missed rows are re-fetched next time.
+      if (!anyTableFailed) {
+        localStorage.setItem(key, maxUpdatedIso || new Date().toISOString());
+      }
       useSyncStore.getState().setLastSyncAt(new Date());
     } finally {
       this.hydrating = false;
@@ -176,14 +186,17 @@ export class SyncEngine {
         if (error) {
           // A server-side code means the server actively rejected the write
           // (RLS policy, constraint, bad payload). Retrying will never help —
-          // drop it immediately. Network errors and unknown failures get retried.
+          // drop it immediately. A network failure retries forever without
+          // burning the retry budget: the write never reached the server, so
+          // dropping it would lose data. Only unknown failures count toward
+          // MAX_RETRIES.
+          if (this.isNetworkError(error)) break;
           const isServerRejection =
             !!this.errorCode(error) && !this.isAuthError(error);
           const next = isServerRejection ? -1 : item.retry_count + 1;
           await db.sync_queue.update(item.id!, {
             retry_count: next >= MAX_RETRIES ? -1 : next,
           });
-          if (this.isNetworkError(error)) break;
         } else {
           await db.sync_queue.delete(item.id!);
           await this.markSynced(item.table_name, item.record_id);

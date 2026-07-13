@@ -29,7 +29,9 @@ export function computeAttendanceStats(
   // Derived from: present / (total + n) >= t  =>  n = floor(present / t - total)
   let canMissMore = 0;
   if (total > 0 && t > 0) {
-    canMissMore = Math.floor(present / t - total);
+    // The epsilon absorbs float noise (e.g. 3/0.6 === 4.999999999999999) so an
+    // exactly-on-threshold count doesn't floor one class too low.
+    canMissMore = Math.floor(present / t - total + 1e-9);
   } else if (total > 0 && t === 0) {
     canMissMore = Number.POSITIVE_INFINITY;
   }
@@ -42,7 +44,7 @@ export function computeAttendanceStats(
     const denom = 1 - t;
     needToAttend =
       denom > 0
-        ? Math.ceil((t * total - present) / denom)
+        ? Math.ceil((t * total - present) / denom - 1e-9)
         : Number.POSITIVE_INFINITY; // threshold = 100%, any absence is unrecoverable
   }
 
