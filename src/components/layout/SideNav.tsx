@@ -17,7 +17,7 @@ export function SideNav() {
               <motion.span
                 whileTap={{ scale: 0.97 }}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 font-sans text-sm font-medium transition-colors ${
-                  accent
+                  accent && isActive
                     ? 'bg-sage-500 text-white shadow-sm'
                     : isActive
                       ? 'bg-sage-100 text-sage-700'
