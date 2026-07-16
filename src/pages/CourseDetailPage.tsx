@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Pencil } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronDown, Pencil } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { ProgressRing } from '../components/ui/ProgressRing';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -14,6 +14,7 @@ import { useCourse } from '../hooks/useCourses';
 import { useSessions } from '../hooks/useSessions';
 import { useSemesters } from '../hooks/useSemesters';
 import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
+import { useUiStore } from '../stores/uiStore';
 import { TONE_CLASSES } from '../lib/status';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
@@ -34,6 +35,11 @@ export function CourseDetailPage() {
     date?: string;
   }>({ open: false, session: null });
   const [editCourse, setEditCourse] = useState(false);
+
+  const classesExpanded = useUiStore((s) =>
+    id ? s.classesExpanded[id] ?? true : true
+  );
+  const setClassesExpanded = useUiStore((s) => s.setClassesExpanded);
 
   const semester = useMemo(
     () => semesters?.find((s) => s.id === course?.semester_id) ?? null,
@@ -136,33 +142,66 @@ export function CourseDetailPage() {
 
       {/* Session list */}
       <div className="mt-6">
-        <h2 className="mb-3 font-sans text-base font-medium text-ink-900">
+        <button
+          type="button"
+          onClick={() => setClassesExpanded(course.id, !classesExpanded)}
+          aria-expanded={classesExpanded}
+          className="mb-3 flex w-full items-center gap-1.5 font-sans text-base font-medium text-ink-900"
+        >
           Classes
-        </h2>
+          {grouped.length > 0 && (
+            <span className="font-sans text-sm font-normal text-ink-300">
+              ({sessions?.length ?? 0})
+            </span>
+          )}
+          <motion.span
+            animate={{ rotate: classesExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="ml-auto text-ink-300"
+          >
+            <ChevronDown size={20} />
+          </motion.span>
+        </button>
         {grouped.length === 0 ? (
           <p className="rounded-card bg-parchment-50 p-5 text-center font-sans text-sm text-ink-500 shadow-sm">
             No classes recorded yet. Tap + to add one.
           </p>
         ) : (
-          <div className="space-y-5">
-            {grouped.map((group) => (
-              <div key={group.label}>
-                <p className="mb-2 font-sans text-xs font-medium uppercase tracking-wide text-ink-300">
-                  {group.label}
-                </p>
-                <motion.div
-                  variants={listContainer}
-                  initial="initial"
-                  animate="animate"
-                  className="space-y-2"
-                >
-                  {group.items.map((s) => (
-                    <SessionItem key={s.id} session={s} onEdit={openEditSession} />
+          <AnimatePresence initial={false}>
+            {classesExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-5">
+                  {grouped.map((group) => (
+                    <div key={group.label}>
+                      <p className="mb-2 font-sans text-xs font-medium uppercase tracking-wide text-ink-300">
+                        {group.label}
+                      </p>
+                      <motion.div
+                        variants={listContainer}
+                        initial="initial"
+                        animate="animate"
+                        className="space-y-2"
+                      >
+                        {group.items.map((s) => (
+                          <SessionItem
+                            key={s.id}
+                            session={s}
+                            onEdit={openEditSession}
+                          />
+                        ))}
+                      </motion.div>
+                    </div>
                   ))}
-                </motion.div>
-              </div>
-            ))}
-          </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </div>
 
