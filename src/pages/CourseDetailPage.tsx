@@ -156,7 +156,7 @@ export function CourseDetailPage() {
           )}
           <motion.span
             animate={{ rotate: classesExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
             className="ml-auto text-ink-300"
           >
             <ChevronDown size={20} />
@@ -173,7 +173,10 @@ export function CourseDetailPage() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{
+                  height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] },
+                  opacity: { duration: 0.18, ease: 'easeOut' },
+                }}
                 className="overflow-hidden"
               >
                 <div className="space-y-5">
