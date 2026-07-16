@@ -17,31 +17,35 @@ export function BottomNav() {
               <>
                 <motion.span
                   whileTap={{ scale: 0.9 }}
-                  className={
-                    accent
-                      ? 'flex h-8 w-8 items-center justify-center rounded-full bg-sage-500 text-white shadow-sm'
-                      : 'flex h-8 items-center justify-center'
-                  }
+                  className="relative flex h-8 w-8 items-center justify-center"
                 >
+                  {accent && (
+                    <motion.span
+                      aria-hidden
+                      className="absolute inset-0 rounded-full bg-sage-500 shadow-sm"
+                      initial={false}
+                      animate={{
+                        scale: isActive ? 1 : 0.6,
+                        opacity: isActive ? 1 : 0,
+                      }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+                    />
+                  )}
                   <Icon
-                    size={accent ? 20 : 22}
+                    size={22}
                     strokeWidth={2}
-                    className={
-                      accent
+                    className={`relative transition-colors ${
+                      accent && isActive
                         ? 'text-white'
                         : isActive
                           ? 'text-sage-600'
                           : 'text-ink-300'
-                    }
+                    }`}
                   />
                 </motion.span>
                 <span
-                  className={`text-[10px] font-medium ${
-                    accent
-                      ? 'text-sage-600'
-                      : isActive
-                        ? 'text-sage-600'
-                        : 'text-ink-300'
+                  className={`text-[10px] font-medium transition-colors ${
+                    isActive ? 'text-sage-600' : 'text-ink-300'
                   }`}
                 >
                   {label}
