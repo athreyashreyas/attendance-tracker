@@ -22,6 +22,15 @@ export const COURSE_COLORS = [
 // Sage is the brand tone; keep it the default regardless of array order.
 export const DEFAULT_COURSE_COLOR = '#4F7942';
 
+// A fixed, desaturated fill for missed classes. Deliberately a warm neutral
+// with a faint rose undertone rather than a true red: the heatmap is otherwise
+// single-hue per course, so any saturated second colour would both clash with
+// the course colour and collide outright for red-family courses. A muted
+// mauve-grey never overlaps the 16 course hues, reads a touch "sad" against the
+// bold present fills, and stays clearly distinct from the neutral greys used for
+// cancelled and unscheduled cells.
+export const ABSENT_COLOR = '#C4A5A5';
+
 export const STATUS_COLORS = {
   green: '#4F7942',
   amber: '#C98F3E',

@@ -14,6 +14,15 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.5.4',
+    date: '2026-07-24',
+    title: 'A clearer read on the days you missed',
+    notes: [
+      'Missed classes now fill in with a soft, muted tone instead of an empty outline, so an absence reads at a glance without ever clashing with your class colour.',
+      'The class list on a course page tucks away and springs back a little quicker.',
+    ],
+  },
+  {
     version: '0.5.3',
     date: '2026-07-03',
     title: 'Sync on demand, and a quieter ride',

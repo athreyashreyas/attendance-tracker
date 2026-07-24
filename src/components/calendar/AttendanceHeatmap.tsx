@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { toDateKey, fromDateKey, DAY_LABELS_SHORT } from '../../utils/dates';
-import { hexToRgba } from '../../lib/colors';
+import { hexToRgba, ABSENT_COLOR } from '../../lib/colors';
 import type { Course, Session, ScheduleDay } from '../../types';
 
 interface AttendanceHeatmapProps {
@@ -67,10 +67,7 @@ export function AttendanceHeatmap({
             };
           } else if (session?.status === 'absent') {
             cell = {
-              style: {
-                backgroundColor: 'transparent',
-                boxShadow: `inset 0 0 0 1.5px ${course.color}`,
-              },
+              style: { backgroundColor: ABSENT_COLOR },
               content: '',
               faded: false,
             };
@@ -131,7 +128,7 @@ export function AttendanceHeatmap({
         <span className="flex items-center gap-1.5">
           <span
             className="h-3 w-3 rounded-[3px]"
-            style={{ boxShadow: `inset 0 0 0 1.5px ${course.color}` }}
+            style={{ backgroundColor: ABSENT_COLOR }}
           />
           Absent
         </span>
