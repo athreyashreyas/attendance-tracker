@@ -14,6 +14,18 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.5.5',
+    date: '2026-07-31',
+    major: true,
+    title: 'See how far along each class is',
+    notes: [
+      'Each class on the home screen now carries a row of small ticks, one per class in its term, inked in as each one passes. A glance tells you whether a class is nearly over or has barely begun.',
+      'The ticks are drawn in the class\'s own colour, so they stay clear of the ring on the right: that one is still about how you are doing, not how far along you are.',
+      'Open a class and you will find "This term": a pie of the whole term that fills as it goes, split into the classes you attended and the ones you missed, with the rest of the circle left open for what is still to come.',
+      'Classes with no end date carry on as they were, since there is nothing to measure them against yet.',
+    ],
+  },
+  {
     version: '0.5.4',
     date: '2026-07-24',
     title: 'A clearer read on the days you missed',

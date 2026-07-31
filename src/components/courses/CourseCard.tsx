@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { ProgressRing } from '../ui/ProgressRing';
+import { ProgressTicks } from '../ui/ProgressTicks';
 import { Badge } from '../ui/Badge';
 import { useAttendanceStats, useTermProjection } from '../../hooks/useAttendanceStats';
 import { listItem } from '../../lib/motion';
@@ -41,6 +42,13 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
 
   const hasSessions = stats !== null && stats.total > 0;
 
+  // How far through the class's own term we are: classes already settled out of
+  // every class that counts. Only meaningful when the term has an end to
+  // measure against, so open-ended classes simply go without.
+  const termTotal = proj?.projectedTotal ?? 0;
+  const termDone = proj ? proj.projectedTotal - proj.remaining : 0;
+  const showTerm = proj !== null && termTotal > 0;
+
   return (
     <motion.div
       layout
@@ -72,6 +80,15 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
             reachable={proj?.reachable ?? true}
           />
         </div>
+        {showTerm && (
+          <ProgressTicks
+            className="mt-2"
+            done={termDone}
+            total={termTotal}
+            color={course.color}
+            label={termProgressLabel(termDone, termTotal)}
+          />
+        )}
       </div>
 
       <ProgressRing
@@ -87,6 +104,15 @@ export function CourseCard({ course, semester, onEdit }: CourseCardProps) {
       </ProgressRing>
     </motion.div>
   );
+}
+
+/** Warm, countable phrasing for how far along the term is. */
+function termProgressLabel(done: number, total: number): string {
+  if (done === 0) return total === 1 ? 'One class ahead' : `${total} classes ahead`;
+  if (done >= total) {
+    return total === 1 ? 'The one class is done' : `All ${total} classes done`;
+  }
+  return `${done} of ${total} classes done`;
 }
 
 function CourseBadge({

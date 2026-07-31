@@ -9,6 +9,7 @@ import { Fab } from '../components/ui/Fab';
 import { SessionItem } from '../components/sessions/SessionItem';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { CourseForm } from '../components/courses/CourseForm';
+import { TermSummary } from '../components/courses/TermSummary';
 import { AttendanceHeatmap } from '../components/calendar/AttendanceHeatmap';
 import { useCourse } from '../hooks/useCourses';
 import { useSessions } from '../hooks/useSessions';
@@ -138,6 +139,17 @@ export function CourseDetailPage() {
         <ProjectionCallout proj={proj} threshold={course.min_attendance_pct} />
       ) : (
         stats && stats.total > 0 && <ThresholdCallout stats={stats} />
+      )}
+
+      {/* The term as a pie: how much of it has happened, and how it went */}
+      {proj && stats && (
+        <TermSummary
+          present={stats.present}
+          absent={stats.absent}
+          remaining={proj.remaining}
+          cancelled={stats.cancelled}
+          color={course.color}
+        />
       )}
 
       {/* Session list */}
