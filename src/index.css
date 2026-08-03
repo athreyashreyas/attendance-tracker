@@ -40,6 +40,27 @@
     overflow: hidden;
   }
 
+  /* The app is touched far more than it's read from. Long-pressing a card or
+     dragging across the calendar should never raise a selection handle or the
+     callout menu, so text isn't selectable by default. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Anything the user genuinely types into, or might want to copy out of,
+     stays selectable. */
+  input,
+  textarea,
+  select,
+  [contenteditable],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+
   /* iOS momentum scrolling */
   .scroll-ios {
     -webkit-overflow-scrolling: touch;

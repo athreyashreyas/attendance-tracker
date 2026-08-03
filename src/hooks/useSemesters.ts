@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
+import { toRemote } from '../utils/records';
 import { nowIso } from '../utils/dates';
 import type { Semester } from '../types';
 
@@ -40,6 +41,8 @@ export function useSemesterMutations() {
       start_date: input.start_date,
       end_date: input.end_date,
       is_active: existing?.is_active ?? false,
+      archived_at: existing?.archived_at ?? null,
+      auto_archive: existing?.auto_archive ?? true,
       created_at: existing?.created_at ?? now,
       updated_at: now,
       deleted_at: null,
@@ -51,6 +54,28 @@ export function useSemesterMutations() {
     );
     invalidate();
     return semester;
+  }
+
+  /**
+   * Archive a semester (or pull it back out). Its classes follow it into the
+   * archive without being rewritten one by one, so unarchiving restores each
+   * of them exactly as it was.
+   */
+  async function setSemesterArchived(
+    id: string,
+    archived: boolean
+  ): Promise<void> {
+    const semester = await db.semesters.get(id);
+    if (!semester) return;
+    const now = nowIso();
+    await syncEngine.writeLocal('semesters', 'UPDATE', {
+      ...toRemote(semester),
+      archived_at: archived ? now : null,
+      auto_archive: archived ? (semester.auto_archive ?? true) : false,
+      updated_at: now,
+    } as Semester);
+    invalidate();
+    void queryClient.invalidateQueries({ queryKey: ['courses'] });
   }
 
   /**
@@ -85,5 +110,5 @@ export function useSemesterMutations() {
     return true;
   }
 
-  return { saveSemester, deleteSemester };
+  return { saveSemester, setSemesterArchived, deleteSemester };
 }

@@ -8,6 +8,7 @@ import { CourseDetailPage } from './pages/CourseDetailPage';
 import { QuickMarkPage } from './pages/QuickMarkPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ArchivePage } from './pages/ArchivePage';
 import { useAuth } from './hooks/useAuth';
 
 function Splash() {
@@ -46,6 +47,7 @@ export const router = createHashRouter([
       { path: '/quick-mark', element: <QuickMarkPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/archive', element: <ArchivePage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { useAllCourses } from './useCourses';
 import { useAllSessions } from './useSessions';
+import { useSemesters } from './useSemesters';
 import { isDayOff } from '../lib/calculations';
+import { isCourseArchived } from '../lib/archive';
 import { todayKey } from '../utils/dates';
 import type { Course, ScheduleDay, Session } from '../types';
 
@@ -26,12 +28,14 @@ export interface TodayMarking {
 export function useTodayMarking(): TodayMarking {
   const { data: courses, isLoading: coursesLoading } = useAllCourses();
   const { data: allSessions, isLoading: sessionsLoading } = useAllSessions();
+  const { data: semesters } = useSemesters();
 
   const today = todayKey();
   const todayDow = new Date().getDay() as ScheduleDay;
 
   return useMemo(() => {
     const sessions = allSessions ?? [];
+    const semesterById = new Map((semesters ?? []).map((s) => [s.id, s]));
 
     // Course ids with any session on today (used to pull ad-hoc classes into
     // the deck even when today isn't one of their recurring days).
@@ -44,12 +48,18 @@ export function useTodayMarking(): TodayMarking {
     }
 
     // A class the user has marked as off today isn't asked about, unless they've
-    // already put a session on today themselves.
-    const deck = (courses ?? []).filter(
-      (c) =>
+    // already put a session on today themselves. Archived classes never appear:
+    // they're done with, whatever their schedule says.
+    const deck = (courses ?? []).filter((c) => {
+      const semester = c.semester_id
+        ? (semesterById.get(c.semester_id) ?? null)
+        : null;
+      if (isCourseArchived(c, semester)) return false;
+      return (
         (c.schedule_days.includes(todayDow) && !isDayOff(c, today)) ||
         withSessionToday.has(c.id)
-    );
+      );
+    });
     const toMark = deck.filter((c) => !markedToday.has(c.id));
 
     return {
@@ -58,5 +68,13 @@ export function useTodayMarking(): TodayMarking {
       toMark,
       isLoading: coursesLoading || sessionsLoading,
     };
-  }, [courses, allSessions, today, todayDow, coursesLoading, sessionsLoading]);
+  }, [
+    courses,
+    allSessions,
+    semesters,
+    today,
+    todayDow,
+    coursesLoading,
+    sessionsLoading,
+  ]);
 }

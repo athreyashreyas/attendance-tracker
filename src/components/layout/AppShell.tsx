@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
 import { SyncDot } from '../ui/SyncIndicator';
+import { useAutoArchive } from '../../hooks/useAutoArchive';
 
 /**
  * App shell sized via the html element's height (see index.css), which equals
@@ -11,6 +12,9 @@ import { SyncDot } from '../ui/SyncIndicator';
  * flex child, not position:fixed) stays pinned to the bottom on iOS.
  */
 export function AppShell() {
+  // Terms and classes file themselves away once their last date has passed.
+  useAutoArchive();
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-parchment-100 md:flex-row">
       <SideNav />

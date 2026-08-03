@@ -2,18 +2,23 @@ import { useEffect, useMemo } from 'react';
 import { useAllCourses } from './useCourses';
 import { useSemesters } from './useSemesters';
 import { useUiStore, type ViewFilter } from '../stores/uiStore';
+import { isArchivedRecord, isCourseArchived } from '../lib/archive';
 import type { Course, Semester } from '../types';
 
 export interface CourseView {
   filter: ViewFilter;
   setFilter: (filter: ViewFilter) => void;
-  /** Courses matching the current filter (sorted by creation). */
+  /** Live courses matching the current filter (sorted by creation). */
   courses: Course[];
-  /** All of the user's courses, regardless of filter. */
+  /** Every live course, regardless of filter. */
   allCourses: Course[];
+  /** Courses in the archive, newest term first. Never in `courses`. */
+  archivedCourses: Course[];
+  /** Live semesters only; archived ones are offered in the archive. */
   semesters: Semester[];
+  archivedSemesters: Semester[];
   isLoading: boolean;
-  /** The semester a course belongs to, or null if it's standalone. */
+  /** The semester a course belongs to, archived or not. */
   semesterOf: (course: Course | null | undefined) => Semester | null;
 }
 
@@ -27,20 +32,46 @@ export function useCourseView(): CourseView {
   const { data: allCourses, isLoading: coursesLoading } = useAllCourses();
   const { data: semesters, isLoading: semLoading } = useSemesters();
 
-  const semList = semesters ?? [];
-  const all = allCourses ?? [];
+  const everySemester = semesters ?? [];
+  const everyCourse = allCourses ?? [];
 
+  // Keyed on every semester, archived included, so a course can still name the
+  // semester it sits in while both are in the archive.
   const semesterById = useMemo(() => {
     const map = new Map<string, Semester>();
-    for (const s of semList) map.set(s.id, s);
+    for (const s of everySemester) map.set(s.id, s);
     return map;
-  }, [semList]);
+  }, [everySemester]);
 
-  // Recover if the saved filter points at a semester that was deleted.
+  const semList = useMemo(
+    () => everySemester.filter((s) => !isArchivedRecord(s)),
+    [everySemester]
+  );
+  const archivedSemesters = useMemo(
+    () => everySemester.filter(isArchivedRecord),
+    [everySemester]
+  );
+
+  // A class is in the archive on its own account, or because its semester is.
+  const { all, archivedCourses } = useMemo(() => {
+    const live: Course[] = [];
+    const filed: Course[] = [];
+    for (const c of everyCourse) {
+      const semester = c.semester_id
+        ? (semesterById.get(c.semester_id) ?? null)
+        : null;
+      (isCourseArchived(c, semester) ? filed : live).push(c);
+    }
+    return { all: live, archivedCourses: filed };
+  }, [everyCourse, semesterById]);
+
+  // Recover if the saved filter points at a semester that was deleted or
+  // archived, so the dashboard never sits on an empty view it can't leave.
   useEffect(() => {
     if (filter === 'all' || filter === 'other') return;
-    if (semList.length > 0 && !semesterById.has(filter)) setFilter('all');
-  }, [filter, semList.length, semesterById, setFilter]);
+    if (everySemester.length > 0 && !semesterById.has(filter)) setFilter('all');
+    else if (archivedSemesters.some((s) => s.id === filter)) setFilter('all');
+  }, [filter, everySemester.length, semesterById, archivedSemesters, setFilter]);
 
   const courses = useMemo(() => {
     if (filter === 'all') return all;
@@ -58,7 +89,9 @@ export function useCourseView(): CourseView {
     setFilter,
     courses,
     allCourses: all,
+    archivedCourses,
     semesters: semList,
+    archivedSemesters,
     isLoading: coursesLoading || semLoading,
     semesterOf,
   };

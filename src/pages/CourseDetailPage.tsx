@@ -17,6 +17,7 @@ import { useSemesters } from '../hooks/useSemesters';
 import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
 import { useUiStore } from '../stores/uiStore';
 import { TONE_CLASSES, STATUS_LABEL, STATUS_OPTIONS } from '../lib/status';
+import { isCourseArchived } from '../lib/archive';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
 import type { Session, SessionStatus, TermProjection } from '../types';
@@ -101,7 +102,9 @@ export function CourseDetailPage() {
     <div className="relative mx-auto max-w-3xl pb-24 md:pb-2">
       <PageHeader
         title={course.name}
-        subtitle={semester?.name ?? 'Standalone'}
+        subtitle={`${semester?.name ?? 'Standalone'}${
+          isCourseArchived(course, semester) ? ' · Archived' : ''
+        }`}
         left={
           <button
             type="button"

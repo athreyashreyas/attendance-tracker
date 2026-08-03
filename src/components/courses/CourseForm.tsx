@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Minus, Plus, Trash2 } from 'lucide-react';
+import { Archive, ChevronDown, Minus, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -45,7 +45,7 @@ export function CourseForm({
   defaultSemesterId,
   onDeleted,
 }: CourseFormProps) {
-  const { saveCourse, deleteCourse } = useCourseMutations();
+  const { saveCourse, setCourseArchived, deleteCourse } = useCourseMutations();
   const isEdit = !!course;
 
   const [name, setName] = useState('');
@@ -61,6 +61,10 @@ export function CourseForm({
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [markedCount, setMarkedCount] = useState<number | null>(null);
+  const [losses, setLosses] = useState<{
+    lostDaysOff: number;
+    strandedMarks: number;
+  } | null>(null);
 
   // Reset fields whenever the sheet opens for a (different) course.
   useEffect(() => {
@@ -77,6 +81,7 @@ export function CourseForm({
     setError(null);
     setConfirmDelete(false);
     setMarkedCount(null);
+    setLosses(null);
   }, [open, course, defaultSemesterId]);
 
   // When the user asks to delete, count how much attendance they'd lose so we
@@ -96,6 +101,16 @@ export function CourseForm({
     () => semesters.find((s) => s.id === semesterId) ?? null,
     [semesters, semesterId]
   );
+
+  // Archived terms aren't offered for new classes, but one already sitting in
+  // an archived term must still be able to show (and keep) it.
+  const offerableSemesters = useMemo(
+    () => semesters.filter((s) => !s.archived_at || s.id === semesterId),
+    [semesters, semesterId]
+  );
+
+  // Archived because its term is, rather than on its own account.
+  const archivedBySemester = !!course && !!selectedSemester?.archived_at;
 
   // Days off are picked against whatever window the class will actually run in:
   // its own dates when set, otherwise the semester it belongs to.
@@ -118,7 +133,38 @@ export function CourseForm({
     );
   }
 
-  async function handleSave() {
+  /**
+   * What narrowing the class dates would cost: days off that fall outside the
+   * new window are dropped for good, and classes already marked outside it stop
+   * appearing on the overview grid. Both are worth saying out loud first.
+   */
+  async function countLosses() {
+    if (!course || !windowStart || !windowEnd) return null;
+    const windowChanged =
+      (start || null) !== (course.start_date ?? null) ||
+      (end || null) !== (course.end_date ?? null) ||
+      (semesterId || null) !== (course.semester_id ?? null);
+    if (!windowChanged) return null;
+
+    const lostDaysOff = excluded.filter(
+      (d) => d < windowStart || d > windowEnd
+    ).length;
+    const strandedMarks = await db.sessions
+      .where('course_id')
+      .equals(course.id)
+      .filter(
+        (s) =>
+          !s.deleted_at &&
+          s.status !== 'planned' &&
+          (s.scheduled_date < windowStart || s.scheduled_date > windowEnd)
+      )
+      .count();
+
+    if (lostDaysOff === 0 && strandedMarks === 0) return null;
+    return { lostDaysOff, strandedMarks };
+  }
+
+  async function handleSave(confirmed = false) {
     if (!name.trim()) {
       setError('Give the class a name.');
       return;
@@ -150,6 +196,13 @@ export function CourseForm({
         return;
       }
     }
+    if (!confirmed) {
+      const losses = await countLosses();
+      if (losses) {
+        setLosses(losses);
+        return;
+      }
+    }
     setSaving(true);
     try {
       await saveCourse({
@@ -168,6 +221,18 @@ export function CourseForm({
             ? excluded.filter((d) => d >= windowStart && d <= windowEnd)
             : excluded,
       });
+      setLosses(null);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleArchive(archived: boolean) {
+    if (!course) return;
+    setSaving(true);
+    try {
+      await setCourseArchived(course.id, archived);
       onClose();
     } finally {
       setSaving(false);
@@ -238,13 +303,17 @@ export function CourseForm({
           </p>
           <select
             value={semesterId}
-            onChange={(e) => setSemesterId(e.target.value)}
+            onChange={(e) => {
+              setSemesterId(e.target.value);
+              setLosses(null);
+            }}
             className="w-full rounded-lg border-0 bg-parchment-50 px-3 py-2.5 font-sans text-sm text-ink-900 ring-1 ring-inset ring-ink-100 focus:ring-2 focus:ring-inset focus:ring-sage-400"
           >
             <option value={NO_SEMESTER}>No semester (standalone)</option>
-            {semesters.map((s) => (
+            {offerableSemesters.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
+                {s.archived_at ? ' (archived)' : ''}
               </option>
             ))}
           </select>
@@ -264,13 +333,25 @@ export function CourseForm({
               <label className="mb-1 block font-sans text-[11px] text-ink-500">
                 First class
               </label>
-              <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
+              <DateInput
+                value={start}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  setLosses(null);
+                }}
+              />
             </div>
             <div>
               <label className="mb-1 block font-sans text-[11px] text-ink-500">
                 Last class
               </label>
-              <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
+              <DateInput
+                value={end}
+                onChange={(e) => {
+                  setEnd(e.target.value);
+                  setLosses(null);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -366,13 +447,94 @@ export function CourseForm({
         {error && <p className="font-sans text-sm text-rose-600">{error}</p>}
 
         <div className="space-y-3">
-          <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
-            {isEdit ? 'Save changes' : 'Add class'}
-          </Button>
+          {losses ? (
+            <div className="space-y-3 rounded-card bg-amber-100 p-3.5">
+              <p className="font-sans text-sm font-medium text-amber-600">
+                These dates leave part of the class behind.
+              </p>
+              <ul className="space-y-1.5 font-sans text-sm text-ink-700">
+                {losses.strandedMarks > 0 && (
+                  <li>
+                    {losses.strandedMarks} marked{' '}
+                    {losses.strandedMarks === 1 ? 'class falls' : 'classes fall'}{' '}
+                    outside the new dates. They stay in your records and still
+                    count towards your percentage, but they drop off the overview
+                    grid for this class.
+                  </li>
+                )}
+                {losses.lostDaysOff > 0 && (
+                  <li>
+                    {losses.lostDaysOff}{' '}
+                    {losses.lostDaysOff === 1 ? 'day off' : 'days off'} you marked
+                    outside the new dates will be forgotten. Widening the dates
+                    again will not bring them back.
+                  </li>
+                )}
+              </ul>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => setLosses(null)}
+                  disabled={saving}
+                >
+                  Go back
+                </Button>
+                <Button
+                  fullWidth
+                  onClick={() => void handleSave(true)}
+                  disabled={saving}
+                >
+                  Save anyway
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              fullWidth
+              size="lg"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
+              {isEdit ? 'Save changes' : 'Add class'}
+            </Button>
+          )}
 
           {isEdit &&
+            !losses &&
+            (archivedBySemester ? (
+              // Its term is archived, so the class follows it. Restoring the
+              // class on its own wouldn't bring it back.
+              <p className="rounded-card bg-parchment-200 px-3.5 py-3 font-sans text-sm text-ink-500">
+                In the archive with {selectedSemester?.name}. Restore that term
+                to bring this class back with it.
+              </p>
+            ) : (
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => void handleArchive(!course?.archived_at)}
+                disabled={saving}
+                className="justify-start"
+              >
+                {course?.archived_at ? (
+                  <>
+                    <RotateCcw size={16} />
+                    Restore from archive
+                  </>
+                ) : (
+                  <>
+                    <Archive size={16} />
+                    Archive class
+                  </>
+                )}
+              </Button>
+            ))}
+
+          {isEdit &&
+            !losses &&
             (confirmDelete ? (
-              <div className="space-y-3 rounded-card bg-rose-50 p-3.5">
+              <div className="space-y-3 rounded-card bg-rose-100 p-3.5">
                 <p className="font-sans text-sm text-ink-700">
                   {markedCount && markedCount > 0
                     ? `This class has ${markedCount} marked ${

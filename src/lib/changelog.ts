@@ -14,6 +14,19 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.7.0',
+    date: '2026-08-04',
+    major: true,
+    title: 'An archive for finished terms',
+    notes: [
+      'Classes and semesters now step aside once they are over. The morning after a class holds its last session, it files itself away, so your home screen stays about the term you are actually in.',
+      'Everything put away lives in the Archive, reached from Settings or from the line below your classes. It is grouped by term, each class still opens its full record, and nothing is ever deleted. One tap brings anything back.',
+      'You can also archive a class or a whole semester early, from the class edit sheet or the semester row in Settings. Archiving a term takes its classes with it, and restoring it hands them all back.',
+      'Changing a class to a shorter run of dates now tells you what that costs before it saves: how many marked classes fall outside the new dates, and how many days off would be forgotten.',
+      'Text no longer selects itself when you press and hold, so the calendar and the class cards feel like buttons rather than a page.',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-08-04',
     major: true,

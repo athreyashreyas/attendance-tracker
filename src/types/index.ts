@@ -12,6 +12,8 @@ export interface Semester {
   start_date: string; // 'YYYY-MM-DD'
   end_date: string;
   is_active: boolean;
+  archived_at: string | null; // ISO timestamp; null = still live
+  auto_archive: boolean; // may the app archive this once it has ended?
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -31,6 +33,8 @@ export interface Course {
   // one-off cancellations known in advance. They're removed from the schedule
   // outright rather than recorded as cancelled sessions.
   excluded_dates: string[]; // 'YYYY-MM-DD'
+  archived_at: string | null; // ISO timestamp; null = still live
+  auto_archive: boolean; // may the app archive this once its last class has passed?
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
+import { toRemote } from '../utils/records';
 import { nowIso } from '../utils/dates';
 import type { Course, ScheduleDay } from '../types';
 
@@ -64,6 +65,8 @@ export function useCourseMutations() {
       end_date: input.end_date ?? null,
       // Kept sorted so the stored order never depends on the order they were tapped.
       excluded_dates: [...(input.excluded_dates ?? [])].sort(),
+      archived_at: existing?.archived_at ?? null,
+      auto_archive: existing?.auto_archive ?? true,
       created_at: existing?.created_at ?? now,
       updated_at: now,
       deleted_at: null,
@@ -71,6 +74,26 @@ export function useCourseMutations() {
     await syncEngine.writeLocal('courses', input.id ? 'UPDATE' : 'INSERT', course);
     invalidate();
     return course;
+  }
+
+  /**
+   * File a class away (or pull it back out). Nothing is deleted: the class and
+   * every session it holds stay exactly as they are, just out of the way.
+   * Unarchiving also stops the app auto-archiving it again on the next launch.
+   */
+  async function setCourseArchived(id: string, archived: boolean): Promise<void> {
+    const course = await db.courses.get(id);
+    if (!course) return;
+    const now = nowIso();
+    await syncEngine.writeLocal('courses', 'UPDATE', {
+      ...toRemote(course),
+      archived_at: archived ? now : null,
+      // Pulling a class back out means "keep this visible", so the app stops
+      // filing it away on its own.
+      auto_archive: archived ? (course.auto_archive ?? true) : false,
+      updated_at: now,
+    } as Course);
+    invalidate();
   }
 
   async function deleteCourse(id: string): Promise<void> {
@@ -90,5 +113,5 @@ export function useCourseMutations() {
     void queryClient.invalidateQueries({ queryKey: ['sessions'] });
   }
 
-  return { saveCourse, deleteCourse };
+  return { saveCourse, setCourseArchived, deleteCourse };
 }

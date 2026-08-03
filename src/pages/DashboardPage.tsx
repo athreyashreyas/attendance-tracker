@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CalendarCheck } from 'lucide-react';
+import { Archive, CalendarCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { CourseCard } from '../components/courses/CourseCard';
 import { CourseForm } from '../components/courses/CourseForm';
@@ -15,8 +15,16 @@ import { listContainer, spring } from '../lib/motion';
 import type { Course } from '../types';
 
 export function DashboardPage() {
-  const { filter, setFilter, courses, allCourses, semesters, isLoading, semesterOf } =
-    useCourseView();
+  const {
+    filter,
+    setFilter,
+    courses,
+    allCourses,
+    archivedCourses,
+    semesters,
+    isLoading,
+    semesterOf,
+  } = useCourseView();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
@@ -137,6 +145,17 @@ export function DashboardPage() {
             />
           ))}
         </motion.div>
+      )}
+
+      {!isLoading && archivedCourses.length > 0 && (
+        <Link
+          to="/archive"
+          className="mt-6 flex items-center justify-center gap-1.5 font-sans text-sm text-ink-500"
+        >
+          <Archive size={15} />
+          {archivedCourses.length} archived{' '}
+          {archivedCourses.length === 1 ? 'class' : 'classes'}
+        </Link>
       )}
 
       {!showEmpty && <Fab onClick={openAdd} label="Add class" />}

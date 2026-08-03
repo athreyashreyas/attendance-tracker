@@ -9,6 +9,8 @@ import {
   FileText,
   Trash2,
   ChevronDown,
+  ChevronRight,
+  Archive,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -23,6 +25,8 @@ import {
   type SemesterInput,
 } from '../hooks/useSemesters';
 import { useAllCourses } from '../hooks/useCourses';
+import { useCourseView } from '../hooks/useCourseView';
+import { isArchivedRecord } from '../lib/archive';
 import { db } from '../lib/db';
 import { exportAllDataAsJSON, exportCourseAsCSV } from '../lib/export';
 import { APP_VERSION, CHANGELOG, type Release } from '../lib/changelog';
@@ -32,9 +36,13 @@ import type { Semester } from '../types';
 export function SettingsPage() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { data: semesters } = useSemesters();
+  const { data: allSemesters } = useSemesters();
   const { data: courses } = useAllCourses();
-  const { deleteSemester } = useSemesterMutations();
+  const { deleteSemester, setSemesterArchived } = useSemesterMutations();
+  const { archivedCourses, archivedSemesters } = useCourseView();
+
+  // Only live semesters are managed here; archived ones live in the archive.
+  const semesters = (allSemesters ?? []).filter((s) => !isArchivedRecord(s));
 
   const [semesterForm, setSemesterForm] = useState<Semester | null | 'new'>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
@@ -95,7 +103,7 @@ export function SettingsPage() {
           on its own.
         </p>
         <div className="space-y-2">
-          {(semesters ?? []).map((s) => (
+          {semesters.map((s) => (
             <div key={s.id} className="rounded-card bg-parchment-100 p-3.5">
               <div className="flex items-start justify-between gap-2">
                 <button
@@ -110,21 +118,69 @@ export function SettingsPage() {
                     {formatLongDate(s.start_date)} to {formatLongDate(s.end_date)}
                   </p>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(s.id)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-rose-600"
-                  aria-label={`Delete ${s.name}`}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex shrink-0 items-center">
+                  <button
+                    type="button"
+                    onClick={() => void setSemesterArchived(s.id, true)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-ink-500"
+                    aria-label={`Archive ${s.name}`}
+                    title="Archive"
+                  >
+                    <Archive size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(s.id)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-rose-600"
+                    aria-label={`Delete ${s.name}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
-          {(semesters?.length ?? 0) === 0 && (
+          {semesters.length === 0 && (
             <p className="font-sans text-sm text-ink-500">No semesters yet.</p>
           )}
         </div>
+      </Section>
+
+      {/* Archive */}
+      <Section title="Archive">
+        <p className="mb-3 font-sans text-xs text-ink-500">
+          Finished terms and classes move here on their own once their last date
+          has passed. Nothing is deleted, and anything can be brought back.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/archive')}
+          className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+        >
+          <Archive size={18} className="shrink-0 text-ink-500" />
+          <div className="min-w-0 flex-1">
+            <p className="font-sans text-sm font-medium text-ink-900">
+              Archived classes
+            </p>
+            <p className="font-sans text-xs text-ink-500">
+              {archivedCourses.length === 0 && archivedSemesters.length === 0
+                ? 'Nothing put away yet'
+                : [
+                    archivedCourses.length > 0 &&
+                      `${archivedCourses.length} ${
+                        archivedCourses.length === 1 ? 'class' : 'classes'
+                      }`,
+                    archivedSemesters.length > 0 &&
+                      `${archivedSemesters.length} ${
+                        archivedSemesters.length === 1 ? 'term' : 'terms'
+                      }`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+            </p>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-ink-300" />
+        </button>
       </Section>
 
       {/* Data */}
@@ -334,7 +390,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="font-sans text-sm text-ink-500">{label}</span>
-      <span className="min-w-0 truncate font-sans text-sm font-medium text-ink-900">
+      <span className="selectable min-w-0 truncate font-sans text-sm font-medium text-ink-900">
         {value}
       </span>
     </div>
