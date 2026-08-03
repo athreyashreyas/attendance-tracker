@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronDown, Minus, Plus, Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { DateInput } from '../ui/DateInput';
 import { CourseColorPicker } from './CourseColorPicker';
+import { DaysOffPicker } from './DaysOffPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { db } from '../../lib/db';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
+import { countClassDays } from '../../lib/calculations';
 import { WEEK_ORDER, formatLongDate } from '../../utils/dates';
 import type { Course, ScheduleDay, Semester } from '../../types';
 
@@ -53,6 +55,8 @@ export function CourseForm({
   const [semesterId, setSemesterId] = useState<string>(NO_SEMESTER);
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const [daysOffOpen, setDaysOffOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -68,6 +72,8 @@ export function CourseForm({
     setSemesterId(course?.semester_id ?? defaultSemesterId ?? NO_SEMESTER);
     setStart(course?.start_date ?? '');
     setEnd(course?.end_date ?? '');
+    setExcluded(course?.excluded_dates ?? []);
+    setDaysOffOpen(false);
     setError(null);
     setConfirmDelete(false);
     setMarkedCount(null);
@@ -89,6 +95,21 @@ export function CourseForm({
   const selectedSemester = useMemo<Semester | null>(
     () => semesters.find((s) => s.id === semesterId) ?? null,
     [semesters, semesterId]
+  );
+
+  // Days off are picked against whatever window the class will actually run in:
+  // its own dates when set, otherwise the semester it belongs to.
+  const windowStart = start || selectedSemester?.start_date || '';
+  const windowEnd = end || selectedSemester?.end_date || '';
+
+  const classCount = useMemo(
+    () => countClassDays(days, windowStart, windowEnd, excluded),
+    [days, windowStart, windowEnd, excluded]
+  );
+  // Only days off that land on a real class day inside the window count.
+  const offCount = useMemo(
+    () => countClassDays(days, windowStart, windowEnd, []) - classCount,
+    [days, windowStart, windowEnd, classCount]
   );
 
   function toggleDay(day: ScheduleDay) {
@@ -140,6 +161,12 @@ export function CourseForm({
         min_attendance_pct: minPct,
         start_date: start || null,
         end_date: end || null,
+        // Drop anything now outside the window, so shrinking a term doesn't
+        // leave invisible days off behind.
+        excluded_dates:
+          windowStart && windowEnd
+            ? excluded.filter((d) => d >= windowStart && d <= windowEnd)
+            : excluded,
       });
       onClose();
     } finally {
@@ -246,6 +273,67 @@ export function CourseForm({
               <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
           </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setDaysOffOpen((v) => !v)}
+            aria-expanded={daysOffOpen}
+            className="mb-2 flex w-full items-baseline gap-1.5"
+          >
+            <p className="font-sans text-xs font-medium text-ink-500">Days off</p>
+            <span className="font-sans text-[11px] text-ink-300">
+              {offCount > 0
+                ? `${offCount} taken out`
+                : windowStart && windowEnd && days.length > 0
+                  ? 'Holidays and breaks'
+                  : 'Optional'}
+            </span>
+            <motion.span
+              animate={{ rotate: daysOffOpen ? 180 : 0 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              className="ml-auto text-ink-300"
+            >
+              <ChevronDown size={18} />
+            </motion.span>
+          </button>
+
+          {classCount > 0 && (
+            <p className="mb-2 font-sans text-sm text-ink-700">
+              {classCount} {classCount === 1 ? 'class' : 'classes'} in the term
+              {offCount > 0 && (
+                <span className="text-ink-300">
+                  {' '}
+                  · {offCount} {offCount === 1 ? 'day' : 'days'} off
+                </span>
+              )}
+            </p>
+          )}
+
+          <AnimatePresence initial={false}>
+            {daysOffOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{
+                  height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] },
+                  opacity: { duration: 0.18, ease: 'easeOut' },
+                }}
+                className="overflow-hidden"
+              >
+                <DaysOffPicker
+                  scheduleDays={days}
+                  start={windowStart}
+                  end={windowEnd}
+                  value={excluded}
+                  onChange={setExcluded}
+                  color={color}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div>

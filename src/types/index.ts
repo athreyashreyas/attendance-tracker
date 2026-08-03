@@ -27,6 +27,10 @@ export interface Course {
   min_attendance_pct: number;
   start_date: string | null; // 'YYYY-MM-DD'; null falls back to the semester
   end_date: string | null;
+  // Dates inside the window where this class doesn't meet: holidays, breaks,
+  // one-off cancellations known in advance. They're removed from the schedule
+  // outright rather than recorded as cancelled sessions.
+  excluded_dates: string[]; // 'YYYY-MM-DD'
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

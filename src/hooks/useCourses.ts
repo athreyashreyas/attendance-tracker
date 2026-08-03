@@ -36,6 +36,7 @@ export interface CourseInput {
   min_attendance_pct: number;
   start_date?: string | null;
   end_date?: string | null;
+  excluded_dates?: string[];
 }
 
 export function useCourseMutations() {
@@ -61,6 +62,8 @@ export function useCourseMutations() {
       min_attendance_pct: input.min_attendance_pct,
       start_date: input.start_date ?? null,
       end_date: input.end_date ?? null,
+      // Kept sorted so the stored order never depends on the order they were tapped.
+      excluded_dates: [...(input.excluded_dates ?? [])].sort(),
       created_at: existing?.created_at ?? now,
       updated_at: now,
       deleted_at: null,

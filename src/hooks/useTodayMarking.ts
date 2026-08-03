@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAllCourses } from './useCourses';
 import { useAllSessions } from './useSessions';
+import { isDayOff } from '../lib/calculations';
 import { todayKey } from '../utils/dates';
 import type { Course, ScheduleDay, Session } from '../types';
 
@@ -42,8 +43,12 @@ export function useTodayMarking(): TodayMarking {
       if (s.status !== 'planned') markedToday.set(s.course_id, s);
     }
 
+    // A class the user has marked as off today isn't asked about, unless they've
+    // already put a session on today themselves.
     const deck = (courses ?? []).filter(
-      (c) => c.schedule_days.includes(todayDow) || withSessionToday.has(c.id)
+      (c) =>
+        (c.schedule_days.includes(todayDow) && !isDayOff(c, today)) ||
+        withSessionToday.has(c.id)
     );
     const toMark = deck.filter((c) => !markedToday.has(c.id));
 

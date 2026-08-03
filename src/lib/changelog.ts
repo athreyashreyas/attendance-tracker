@@ -14,6 +14,18 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.6.0',
+    date: '2026-08-04',
+    major: true,
+    title: 'Dates on the grid, and a term shaped like yours',
+    notes: [
+      'The overview grid on a class page now carries the date in every square, with the month named above each row that starts one. When you need to raise something about a particular day, you can read it straight off the grid.',
+      'The class list sits behind a row of filters, so you can pull up just the days you were absent, or just the cancelled ones, and see them by date.',
+      'A term is no longer a plain run from the first class to the last. When you add a class, you can now open Days off and take out the days it will not meet: tap the odd holiday, or switch to a range and knock out a whole break in two taps.',
+      'Days off are left out of your schedule entirely rather than counted as cancelled, so they never touch your percentage, and you will not be asked to mark a class on a holiday. They show as hollow squares on the grid.',
+    ],
+  },
+  {
     version: '0.5.5',
     date: '2026-07-31',
     major: true,

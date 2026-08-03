@@ -16,10 +16,12 @@ import { useSessions } from '../hooks/useSessions';
 import { useSemesters } from '../hooks/useSemesters';
 import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceStats';
 import { useUiStore } from '../stores/uiStore';
-import { TONE_CLASSES } from '../lib/status';
+import { TONE_CLASSES, STATUS_LABEL, STATUS_OPTIONS } from '../lib/status';
 import { formatMonthLabel, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
-import type { Session, TermProjection } from '../types';
+import type { Session, SessionStatus, TermProjection } from '../types';
+
+type StatusFilter = SessionStatus | 'all';
 
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +38,7 @@ export function CourseDetailPage() {
     date?: string;
   }>({ open: false, session: null });
   const [editCourse, setEditCourse] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const classesExpanded = useUiStore((s) =>
     id ? s.classesExpanded[id] ?? true : true
@@ -48,16 +51,30 @@ export function CourseDetailPage() {
   );
   const proj = useTermProjection(course, semester);
 
+  const counts = useMemo(() => {
+    const tally: Record<SessionStatus, number> = {
+      present: 0,
+      absent: 0,
+      cancelled: 0,
+      planned: 0,
+    };
+    for (const s of sessions ?? []) tally[s.status] += 1;
+    return tally;
+  }, [sessions]);
+
   const grouped = useMemo(() => {
+    const visible = (sessions ?? []).filter(
+      (s) => statusFilter === 'all' || s.status === statusFilter
+    );
     const groups: { label: string; items: Session[] }[] = [];
-    for (const s of sessions ?? []) {
+    for (const s of visible) {
       const label = formatMonthLabel(fromDateKey(s.scheduled_date));
       const last = groups[groups.length - 1];
       if (last && last.label === label) last.items.push(s);
       else groups.push({ label, items: [s] });
     }
     return groups;
-  }, [sessions]);
+  }, [sessions, statusFilter]);
 
   if (isLoading || !course) {
     return (
@@ -161,7 +178,7 @@ export function CourseDetailPage() {
           className="mb-3 flex w-full items-center gap-1.5 font-sans text-base font-medium text-ink-900"
         >
           Classes
-          {grouped.length > 0 && (
+          {(sessions?.length ?? 0) > 0 && (
             <span className="font-sans text-sm font-normal text-ink-300">
               ({sessions?.length ?? 0})
             </span>
@@ -174,7 +191,7 @@ export function CourseDetailPage() {
             <ChevronDown size={20} />
           </motion.span>
         </button>
-        {grouped.length === 0 ? (
+        {(sessions?.length ?? 0) === 0 ? (
           <p className="rounded-card bg-parchment-50 p-5 text-center font-sans text-sm text-ink-500 shadow-sm">
             No classes recorded yet. Tap + to add one.
           </p>
@@ -191,6 +208,12 @@ export function CourseDetailPage() {
                 }}
                 className="overflow-hidden"
               >
+                <StatusFilterBar
+                  filter={statusFilter}
+                  onChange={setStatusFilter}
+                  counts={counts}
+                  total={sessions?.length ?? 0}
+                />
                 <div className="space-y-5">
                   {grouped.map((group) => (
                     <div key={group.label}>
@@ -293,6 +316,83 @@ function ProjectionCallout({
         finish at {worstPct}%.
       </p>
     </div>
+  );
+}
+
+/**
+ * Narrows the class list to one status, so a specific run of absences can be
+ * pulled up by date when something needs to be raised with a department.
+ */
+function StatusFilterBar({
+  filter,
+  onChange,
+  counts,
+  total,
+}: {
+  filter: StatusFilter;
+  onChange: (filter: StatusFilter) => void;
+  counts: Record<SessionStatus, number>;
+  total: number;
+}) {
+  const options = STATUS_OPTIONS.filter((o) => counts[o.value] > 0);
+  // With only one status on record there is nothing to narrow down to.
+  if (options.length < 2) return null;
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Filter classes by status"
+      className="no-scrollbar -mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1"
+    >
+      <StatusChip
+        label="All"
+        count={total}
+        active={filter === 'all'}
+        activeClass="bg-sage-500 text-white"
+        onClick={() => onChange('all')}
+      />
+      {options.map((o) => (
+        <StatusChip
+          key={o.value}
+          label={STATUS_LABEL[o.value]}
+          count={counts[o.value]}
+          active={filter === o.value}
+          activeClass={o.active}
+          onClick={() => onChange(o.value)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StatusChip({
+  label,
+  count,
+  active,
+  activeClass,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  activeClass: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 font-sans text-xs font-medium transition-colors ${
+        active ? activeClass : 'bg-parchment-200 text-ink-500'
+      }`}
+    >
+      {label}
+      <span className={`ml-1.5 tabular-nums ${active ? 'opacity-70' : 'text-ink-300'}`}>
+        {count}
+      </span>
+    </button>
   );
 }
 

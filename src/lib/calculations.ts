@@ -136,8 +136,21 @@ export function computeTermProjection(
 }
 
 /**
- * Generate expected session dates for a course between two dates,
- * based on its schedule_days array. Returns [] for an invalid range.
+ * Days the course has been told it doesn't meet (holidays, breaks). Older rows
+ * synced before the column existed have no array at all, hence the fallback.
+ */
+export function daysOff(course: Course): string[] {
+  return course.excluded_dates ?? [];
+}
+
+/** True when the class is explicitly off on this date. */
+export function isDayOff(course: Course, dateKey: string): boolean {
+  return daysOff(course).includes(dateKey);
+}
+
+/**
+ * Generate expected session dates for a course between two dates, based on its
+ * schedule_days array and minus its days off. Returns [] for an invalid range.
  */
 export function generateExpectedDates(
   course: Course,
@@ -152,17 +165,49 @@ export function generateExpectedDates(
   ) {
     return dates;
   }
+  const off = new Set(daysOff(course));
   const current = new Date(startDate);
   current.setHours(0, 0, 0, 0);
   const end = new Date(endDate);
   end.setHours(0, 0, 0, 0);
   while (current <= end) {
-    if (course.schedule_days.includes(current.getDay() as ScheduleDay)) {
+    if (
+      course.schedule_days.includes(current.getDay() as ScheduleDay) &&
+      !off.has(format(current, 'yyyy-MM-dd'))
+    ) {
       dates.push(new Date(current));
     }
     current.setDate(current.getDate() + 1);
   }
   return dates;
+}
+
+/**
+ * Count the classes a schedule actually produces between two dates. Used by the
+ * class form to show the effect of days off while they're being picked, before
+ * anything is saved.
+ */
+export function countClassDays(
+  scheduleDays: ScheduleDay[],
+  startKey: string,
+  endKey: string,
+  excluded: string[]
+): number {
+  if (!startKey || !endKey || endKey < startKey || scheduleDays.length === 0) {
+    return 0;
+  }
+  const off = new Set(excluded);
+  const current = new Date(`${startKey}T00:00:00`);
+  const end = new Date(`${endKey}T00:00:00`);
+  let count = 0;
+  while (current <= end) {
+    const key = format(current, 'yyyy-MM-dd');
+    if (scheduleDays.includes(current.getDay() as ScheduleDay) && !off.has(key)) {
+      count += 1;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
 }
 
 /**

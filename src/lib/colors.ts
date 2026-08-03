@@ -49,6 +49,28 @@ export function attendanceColor(pct: number, threshold: number): string {
   return STATUS_COLORS.green;
 }
 
+/** Relative luminance of a hex colour, per WCAG. */
+function luminance(hex: string): number {
+  const clean = hex.replace('#', '');
+  const channel = (i: number) => {
+    const v = parseInt(clean.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+
+/**
+ * Ink or white, whichever reads more clearly on the given fill. The heatmap
+ * paints day numbers over sixteen course colours plus the absent grey, so the
+ * text colour has to be derived rather than fixed.
+ */
+export function readableTextColor(hex: string): string {
+  const l = luminance(hex);
+  const onWhite = 1.05 / (l + 0.05);
+  const onInk = (l + 0.05) / (luminance('#1A1A18') + 0.05);
+  return onWhite >= onInk ? '#FFFFFF' : '#1A1A18';
+}
+
 /** Translate a hex colour to an rgba() string at the given alpha. */
 export function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace('#', '');
