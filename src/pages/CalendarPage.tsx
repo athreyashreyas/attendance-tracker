@@ -7,7 +7,14 @@ import {
   startOfWeek,
   endOfWeek,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, CalendarX2, Plus, Check } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CalendarX2,
+  CalendarRange,
+  Plus,
+  Check,
+} from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MonthCalendar, type DayDot } from '../components/calendar/MonthCalendar';
 import { ViewFilterBar } from '../components/courses/ViewFilterBar';
@@ -27,6 +34,9 @@ import {
   todayKey,
 } from '../utils/dates';
 import type { Course, Session, SessionStatus } from '../types';
+
+/** Whether a break covers one day or a run of them. */
+type BreakSpan = 'single' | 'range';
 
 interface FormTarget {
   courseId: string;
@@ -358,6 +368,7 @@ function BreakSheet({
   courses: Course[];
 }) {
   const { markBreak } = useSessionMutations();
+  const [span, setSpan] = useState<BreakSpan>('single');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -367,12 +378,21 @@ function BreakSheet({
 
   useEffect(() => {
     if (!open) return;
+    setSpan('single');
     setStart(todayKey());
     setEnd(toDateKey(addDays(new Date(), 1)));
     setSelected(new Set(courses.map((c) => c.id))); // default: all classes
     setError(null);
     setResult(null);
   }, [open, courses]);
+
+  const oneDay = span === 'single';
+
+  function chooseSpan(next: BreakSpan) {
+    setSpan(next);
+    setError(null);
+    setResult(null);
+  }
 
   const allSelected = selected.size === courses.length && courses.length > 0;
 
@@ -390,7 +410,8 @@ function BreakSheet({
   }
 
   async function handleSave() {
-    if (end < start) {
+    const last = oneDay ? start : end;
+    if (last < start) {
       setError('The end date should be on or after the start date.');
       return;
     }
@@ -402,10 +423,12 @@ function BreakSheet({
     setSaving(true);
     try {
       const chosen = courses.filter((c) => selected.has(c.id));
-      const count = await markBreak(chosen, start, end);
+      const count = await markBreak(chosen, start, last);
       setResult(
         count === 0
-          ? 'No scheduled classes in that range.'
+          ? oneDay
+            ? 'No scheduled classes on that day.'
+            : 'No scheduled classes in that range.'
           : `Cancelled ${count} class${count === 1 ? '' : 'es'}.`
       );
     } finally {
@@ -416,24 +439,49 @@ function BreakSheet({
   return (
     <BottomSheet open={open} onClose={onClose} title="Cancel a break">
       <div className="space-y-4 pb-2">
+        <div className="flex gap-1.5 rounded-lg bg-parchment-200 p-1">
+          <SpanTab
+            active={oneDay}
+            onClick={() => chooseSpan('single')}
+            icon={<CalendarX2 size={14} />}
+            label="A single day"
+          />
+          <SpanTab
+            active={!oneDay}
+            onClick={() => chooseSpan('range')}
+            icon={<CalendarRange size={14} />}
+            label="A stretch of days"
+          />
+        </div>
+
         <p className="font-sans text-sm text-ink-500">
-          Cancels the scheduled classes you choose between these dates. Anything you
-          have already marked stays as it is.
+          {oneDay
+            ? 'Cancels the classes you choose on this one day. Anything you have already marked stays as it is.'
+            : 'Cancels the scheduled classes you choose between these dates. Anything you have already marked stays as it is.'}
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        {oneDay ? (
           <div>
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
-              From
+              Day
             </label>
             <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
-          <div>
-            <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
-              To
-            </label>
-            <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
+                From
+              </label>
+              <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
+                To
+              </label>
+              <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
           </div>
-        </div>
+        )}
 
         {courses.length > 0 && (
           <div>
@@ -479,9 +527,35 @@ function BreakSheet({
         {error && <p className="font-sans text-sm text-rose-600">{error}</p>}
         {result && <p className="font-sans text-sm text-sage-600">{result}</p>}
         <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
-          Cancel classes in range
+          {oneDay ? 'Cancel classes that day' : 'Cancel classes in range'}
         </Button>
       </div>
     </BottomSheet>
+  );
+}
+
+function SpanTab({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-sans text-xs font-medium transition-colors ${
+        active ? 'bg-parchment-50 text-ink-900 shadow-sm' : 'text-ink-500'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

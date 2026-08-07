@@ -14,6 +14,14 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.7.1',
+    date: '2026-08-07',
+    title: 'Cancel a single day',
+    notes: [
+      'Cancelling a break no longer asks for two dates when you only need one. Open it from the calendar, choose a single day, and the classes you pick are called off just for that day.',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-08-04',
     major: true,
