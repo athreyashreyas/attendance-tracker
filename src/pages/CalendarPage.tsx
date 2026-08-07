@@ -454,34 +454,28 @@ function BreakSheet({
           />
         </div>
 
+        {/* Wording and layout stay the same height in both modes, so switching
+            tabs never resizes the sheet and shoves the title around. */}
         <p className="font-sans text-sm text-ink-500">
-          {oneDay
-            ? 'Cancels the classes you choose on this one day. Anything you have already marked stays as it is.'
-            : 'Cancels the scheduled classes you choose between these dates. Anything you have already marked stays as it is.'}
+          Cancels the scheduled classes you choose on the dates you set. Anything
+          you have already marked stays as it is.
         </p>
-        {oneDay ? (
-          <div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className={oneDay ? 'col-span-2' : undefined}>
             <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
-              Day
+              {oneDay ? 'Day' : 'From'}
             </label>
             <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
-                From
-              </label>
-              <DateInput value={start} onChange={(e) => setStart(e.target.value)} />
-            </div>
+          {!oneDay && (
             <div>
               <label className="mb-1.5 block font-sans text-xs font-medium text-ink-500">
                 To
               </label>
               <DateInput value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {courses.length > 0 && (
           <div>
@@ -524,8 +518,16 @@ function BreakSheet({
           </div>
         )}
 
-        {error && <p className="font-sans text-sm text-rose-600">{error}</p>}
-        {result && <p className="font-sans text-sm text-sage-600">{result}</p>}
+        {/* One line is always reserved here, so a message arriving doesn't
+            shunt the sheet upward either. */}
+        <p
+          aria-live="polite"
+          className={`min-h-5 font-sans text-sm ${
+            error ? 'text-rose-600' : 'text-sage-600'
+          }`}
+        >
+          {error ?? result}
+        </p>
         <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
           {oneDay ? 'Cancel classes that day' : 'Cancel classes in range'}
         </Button>
