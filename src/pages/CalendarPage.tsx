@@ -1,12 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  addDays,
-  addMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-} from 'date-fns';
+import { addDays, addMonths, startOfMonth } from 'date-fns';
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,13 +17,8 @@ import { DateInput } from '../components/ui/DateInput';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { useCourseView } from '../hooks/useCourseView';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
-import {
-  classesOnDate,
-  expectedClassesInRange,
-  isWithinTerm,
-  termWindow,
-} from '../lib/calculations';
-import { classKey, slotLabel, slotOf } from '../lib/slots';
+import { classesOnDay } from '../lib/calculations';
+import { slotLabel } from '../lib/slots';
 import { STATUS_LABEL } from '../lib/status';
 import {
   fromDateKey,
@@ -53,11 +41,48 @@ interface FormTarget {
   defaultStatus?: SessionStatus;
 }
 
-/** A scheduled class with nothing recorded against it yet. */
-interface PlannedClass {
+/** One class of the open day: whose it is, and what (if anything) it holds. */
+interface DayRow {
   course: Course;
   slot: number;
-  total: number;
+  session: Session | null;
+  /** "2nd of 2" on a day that meets twice, null when there's nothing to name. */
+  label: string | null;
+}
+
+/**
+ * One class on the day sheet. A marked class reads solid with its status; one
+ * still to come reads as an outline asking to be recorded.
+ */
+function DayRowButton({ row, onOpen }: { row: DayRow; onOpen: () => void }) {
+  const marked = !!row.session && row.session.status !== 'planned';
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`flex w-full items-center gap-3 rounded-card p-3.5 text-left ${
+        marked ? 'bg-parchment-100' : 'border border-dashed border-parchment-300'
+      }`}
+    >
+      <span
+        className={`h-8 w-1.5 shrink-0 rounded-full ${marked ? '' : 'opacity-50'}`}
+        style={{ backgroundColor: row.course.color }}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-sans text-sm font-medium text-ink-900">
+          {row.course.name}
+        </span>
+        {row.label && (
+          <span className="block font-sans text-xs text-ink-300">{row.label}</span>
+        )}
+      </span>
+      <span
+        className={`shrink-0 font-sans text-xs ${marked ? 'text-ink-500' : 'text-ink-300'}`}
+      >
+        {row.session && marked ? STATUS_LABEL[row.session.status] : 'Tap to mark'}
+      </span>
+    </button>
+  );
 }
 
 export function CalendarPage() {
@@ -77,28 +102,18 @@ export function CalendarPage() {
     return map;
   }, [courses]);
 
-  // Recorded sessions for the courses in view, grouped by date.
-  const byDate = useMemo(() => {
+  // Recorded sessions for the courses in view, keyed by the class and day they
+  // belong to, which is the shape the day-by-day reads want.
+  const sessionsByCourseDate = useMemo(() => {
     const map = new Map<string, Session[]>();
     for (const s of allSessions ?? []) {
       if (!courseById.has(s.course_id)) continue;
-      const list = map.get(s.scheduled_date) ?? [];
+      const key = `${s.course_id}|${s.scheduled_date}`;
+      const list = map.get(key) ?? [];
       list.push(s);
-      map.set(s.scheduled_date, list);
+      map.set(key, list);
     }
     return map;
-  }, [allSessions, courseById]);
-
-  // One entry per class already recorded, so a day that meets twice can have
-  // its first class marked and its second still show as scheduled.
-  const recordedKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of allSessions ?? []) {
-      if (courseById.has(s.course_id)) {
-        set.add(classKey(s.course_id, s.scheduled_date, slotOf(s)));
-      }
-    }
-    return set;
   }, [allSessions, courseById]);
 
   const semesterById = useMemo(() => {
@@ -130,43 +145,38 @@ export function CalendarPage() {
     return month;
   }, [month, monthBounds]);
 
-  // Planned (scheduled-but-unrecorded) classes, computed only for the visible
-  // grid so standalone classes with no end date stay bounded.
-  const plannedByDate = useMemo(() => {
-    const gridStart = startOfWeek(startOfMonth(clampedMonth), { weekStartsOn: 0 });
-    const gridEnd = endOfWeek(endOfMonth(clampedMonth), { weekStartsOn: 0 });
-    const map = new Map<string, PlannedClass[]>();
-    for (const c of courses) {
-      // A class with no dates of its own runs for as long as its term does, so
-      // the schedule stops at the term's edges rather than running on forever.
-      const { start, end } = termWindow(c, termOf(c));
-      const from = start && start > toDateKey(gridStart) ? fromDateKey(start) : gridStart;
-      const to = end && end < toDateKey(gridEnd) ? fromDateKey(end) : gridEnd;
-      if (from > to) continue;
-      for (const cls of expectedClassesInRange(c, from, to)) {
-        if (recordedKeys.has(classKey(c.id, cls.date, cls.slot))) continue;
-        const list = map.get(cls.date) ?? [];
-        list.push({ course: c, slot: cls.slot, total: cls.total });
-        map.set(cls.date, list);
-      }
+  /** Every class each course in view holds on a date, recorded or not. */
+  function shapeOf(dateKey: string): DayRow[] {
+    const rows: DayRow[] = [];
+    for (const course of courses) {
+      const classes = classesOnDay(
+        course,
+        dateKey,
+        sessionsByCourseDate.get(`${course.id}|${dateKey}`) ?? [],
+        termOf(course)
+      );
+      classes.forEach(({ slot, session }, i) => {
+        rows.push({
+          course,
+          slot,
+          session,
+          label: slotLabel(i + 1, classes.length),
+        });
+      });
     }
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courses, clampedMonth, recordedKeys, semesterById]);
+    return rows;
+  }
 
   const canPrev = monthBounds ? clampedMonth > monthBounds.min : true;
   const canNext = monthBounds ? clampedMonth < monthBounds.max : true;
 
   function getDots(dateKey: string): DayDot[] {
     const dots: DayDot[] = [];
-    for (const s of byDate.get(dateKey) ?? []) {
-      const color = courseById.get(s.course_id)?.color;
-      if (!color || s.status === 'cancelled') continue;
-      // Planned sessions read as outlined (upcoming), decided ones as filled.
-      dots.push({ color, recorded: s.status !== 'planned' });
-    }
-    for (const p of plannedByDate.get(dateKey) ?? []) {
-      dots.push({ color: p.course.color, recorded: false });
+    for (const { course, session } of shapeOf(dateKey)) {
+      if (session?.status === 'cancelled') continue;
+      // Marked classes read as filled, everything still to come as outlined.
+      const recorded = !!session && session.status !== 'planned';
+      dots.push({ color: course.color, recorded });
     }
     return dots;
   }
@@ -176,38 +186,15 @@ export function CalendarPage() {
     setForm(target);
   }
 
-  const daySessions = selectedDay ? (byDate.get(selectedDay) ?? []) : [];
-  const dayDecided = daySessions.filter((s) => s.status !== 'planned');
-  const dayPlannedSessions = daySessions.filter((s) => s.status === 'planned');
-
-  // How many classes each course holds on the open day, so a class that meets
-  // twice can name its halves rather than list the same title twice.
-  const dayTotals = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!selectedDay) return map;
-    for (const c of courses) {
-      const scheduled = isWithinTerm(c, termOf(c), selectedDay)
-        ? classesOnDate(c, selectedDay)
-        : 0;
-      if (scheduled > 0) map.set(c.id, scheduled);
-    }
-    for (const s of byDate.get(selectedDay) ?? []) {
-      map.set(s.course_id, Math.max(map.get(s.course_id) ?? 0, slotOf(s)));
-    }
-    return map;
+  // The open day, in the order it runs: each class of each course, whether
+  // it's been marked or is still waiting.
+  const dayRows = useMemo(
+    () => (selectedDay ? shapeOf(selectedDay) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDay, courses, byDate, semesterById]);
-
-  function sessionSlotLabel(session: Session): string | null {
-    return slotLabel(slotOf(session), dayTotals.get(session.course_id) ?? 1);
-  }
-  const dayPlannedRecurring = selectedDay
-    ? (plannedByDate.get(selectedDay) ?? [])
-    : [];
-  const dayHasNothing =
-    dayDecided.length === 0 &&
-    dayPlannedSessions.length === 0 &&
-    dayPlannedRecurring.length === 0;
+    [selectedDay, courses, sessionsByCourseDate, semesterById]
+  );
+  const dayMarked = dayRows.filter((r) => r.session && r.session.status !== 'planned');
+  const dayToMark = dayRows.filter((r) => !r.session || r.session.status === 'planned');
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -283,112 +270,27 @@ export function CalendarPage() {
         title={selectedDay ? formatSessionDate(selectedDay) : ''}
       >
         <div className="space-y-2 pb-2">
-          {dayHasNothing && (
+          {dayRows.length === 0 && (
             <p className="py-4 text-center font-sans text-sm text-ink-500">
               Nothing scheduled on this day.
             </p>
           )}
 
-          {dayDecided.map((s) => {
-            const course = courseById.get(s.course_id);
-            const label = sessionSlotLabel(s);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => openForm({ courseId: s.course_id, session: s })}
-                className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
-              >
-                <span
-                  className="h-8 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: course?.color ?? '#9B9890' }}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
-                    {course?.name ?? 'Class'}
-                  </span>
-                  {label && (
-                    <span className="block font-sans text-xs text-ink-300">
-                      {label}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 font-sans text-xs text-ink-500">
-                  {STATUS_LABEL[s.status]}
-                </span>
-              </button>
-            );
-          })}
-
-          {/* Planned: ad-hoc planned sessions (tap to mark/edit) and recurring
-              scheduled classes (tap to record). */}
-          {dayPlannedSessions.map((s) => {
-            const course = courseById.get(s.course_id);
-            const label = sessionSlotLabel(s);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => openForm({ courseId: s.course_id, session: s })}
-                className="flex w-full items-center gap-3 rounded-card border border-dashed border-parchment-300 p-3.5 text-left"
-              >
-                <span
-                  className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
-                  style={{ backgroundColor: course?.color ?? '#9B9890' }}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
-                    {course?.name ?? 'Class'}
-                  </span>
-                  {label && (
-                    <span className="block font-sans text-xs text-ink-300">
-                      {label}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 font-sans text-xs text-ink-300">
-                  Tap to mark
-                </span>
-              </button>
-            );
-          })}
-
-          {dayPlannedRecurring.map((p) => {
-            const label = slotLabel(p.slot, p.total);
-            return (
-              <button
-                key={`${p.course.id}|${p.slot}`}
-                type="button"
-                onClick={() =>
-                  openForm({
-                    courseId: p.course.id,
-                    session: null,
-                    date: selectedDay ?? undefined,
-                    slot: p.slot,
-                  })
-                }
-                className="flex w-full items-center gap-3 rounded-card border border-dashed border-parchment-300 p-3.5 text-left"
-              >
-                <span
-                  className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
-                  style={{ backgroundColor: p.course.color }}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
-                    {p.course.name}
-                  </span>
-                  {label && (
-                    <span className="block font-sans text-xs text-ink-300">
-                      {label}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 font-sans text-xs text-ink-300">
-                  Tap to mark
-                </span>
-              </button>
-            );
-          })}
+          {/* Marked first, then everything still waiting to be recorded. */}
+          {[...dayMarked, ...dayToMark].map((row) => (
+            <DayRowButton
+              key={`${row.course.id}|${row.slot}`}
+              row={row}
+              onOpen={() =>
+                openForm({
+                  courseId: row.course.id,
+                  session: row.session,
+                  date: selectedDay ?? undefined,
+                  slot: row.slot,
+                })
+              }
+            />
+          ))}
 
           {courses.length > 0 && (
             <div className="pt-2">

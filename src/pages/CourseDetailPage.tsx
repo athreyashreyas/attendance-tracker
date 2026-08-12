@@ -19,31 +19,13 @@ import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceSta
 import { useUiStore } from '../stores/uiStore';
 import { TONE_CLASSES, STATUS_LABEL, STATUS_OPTIONS } from '../lib/status';
 import { isCourseArchived } from '../lib/archive';
-import { ordinal, slotOf } from '../lib/slots';
+import type { DayClass } from '../lib/calculations';
+import { ordinal } from '../lib/slots';
 import { formatMonthLabel, formatSessionDate, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
 import type { Session, SessionStatus, TermProjection } from '../types';
 
 type StatusFilter = SessionStatus | 'all';
-
-/**
- * The classes a day holds, recorded or not: the scheduled ones, plus any extra
- * added by hand past them. Slots with neither aren't classes and are left out,
- * which is what a deleted middle class leaves behind.
- */
-function dayClasses(
-  sessions: Session[],
-  scheduled: number
-): { slot: number; session: Session | null }[] {
-  const bySlot = new Map(sessions.map((s) => [slotOf(s), s]));
-  const highest = Math.max(scheduled, ...bySlot.keys(), 0);
-  const out: { slot: number; session: Session | null }[] = [];
-  for (let slot = 1; slot <= highest; slot++) {
-    const session = bySlot.get(slot) ?? null;
-    if (session || slot <= scheduled) out.push({ slot, session });
-  }
-  return out;
-}
 
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +47,7 @@ export function CourseDetailPage() {
   /** A grid day holding several classes, waiting for one to be picked. */
   const [dayPick, setDayPick] = useState<{
     date: string;
-    classes: { slot: number; session: Session | null }[];
+    classes: DayClass[];
   } | null>(null);
 
   const classesExpanded = useUiStore((s) =>
@@ -285,11 +267,10 @@ export function CourseDetailPage() {
               semesterStart={winStart!}
               semesterEnd={winEnd!}
               sessions={sessions ?? []}
-              onSelectDate={(date, daySessions, scheduled) => {
+              onSelectDate={(date, classes) => {
                 // A day can hold more than one class now, so a square with two
                 // behind it asks which one rather than guessing. The unmarked
                 // half of a double counts: it's the one you came to record.
-                const classes = dayClasses(daySessions, scheduled);
                 if (classes.length > 1) setDayPick({ date, classes });
                 else
                   setSessionForm({
@@ -316,7 +297,7 @@ export function CourseDetailPage() {
             {dayPick?.classes.length} classes on this day. Pick the one to record
             or change.
           </p>
-          {dayPick?.classes.map(({ slot, session }) => (
+          {dayPick?.classes.map(({ slot, session }, i) => (
             <button
               key={slot}
               type="button"
@@ -336,7 +317,7 @@ export function CourseDetailPage() {
               }`}
             >
               <span className="min-w-0 flex-1 font-sans text-sm font-medium text-ink-900">
-                {ordinal(slot)} class
+                {ordinal(i + 1)} class
               </span>
               <span
                 className={`shrink-0 font-sans text-xs ${

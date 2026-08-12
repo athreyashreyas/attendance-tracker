@@ -160,7 +160,7 @@ export function QuickMarkPage() {
 
             {item.total > 1 && (
               <p className="mt-1.5 font-sans text-sm text-ink-500">
-                {ordinal(item.slot)} of {item.total} today
+                {ordinal(item.position)} of {item.total} today
               </p>
             )}
 

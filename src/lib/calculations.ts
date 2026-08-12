@@ -211,6 +211,59 @@ export function scheduleHoldsClass(
   return slot <= normalizeCount(perDay[day] ?? 1);
 }
 
+/** One class of a particular day, recorded or not. */
+export interface DayClass {
+  /** Which class of the day this is, as stored on the session. */
+  slot: number;
+  /** What was recorded against it, or null while it's still to be marked. */
+  session: Session | null;
+  /** True when the schedule holds it, false for one added to the day by hand. */
+  scheduled: boolean;
+}
+
+/**
+ * The shape of one day for one class: the classes its schedule holds, plus any
+ * recorded past them, in the order they run.
+ *
+ * This is the single answer to "what does this day hold", asked by the marking
+ * deck, the calendar's day sheet, the overview grid and the grid's day picker.
+ * Two rules it settles for all of them: a slot with neither a session nor a
+ * scheduled class isn't a class at all (deleting the middle class of three
+ * leaves such a gap), and a day outside the class's term holds only what has
+ * actually been recorded on it.
+ *
+ * `sessions` is that course's live sessions on that date; anything else is
+ * ignored. Pass the class's semester so a class with no dates of its own can be
+ * held to its term.
+ */
+export function classesOnDay(
+  course: Course,
+  dateKey: string,
+  sessions: Session[],
+  semester: Semester | null = null
+): DayClass[] {
+  const bySlot = new Map<number, Session>();
+  for (const s of sessions) {
+    if (s.deleted_at) continue;
+    if (s.course_id !== course.id || s.scheduled_date !== dateKey) continue;
+    bySlot.set(slotOf(s), s);
+  }
+
+  const scheduled = isWithinTerm(course, semester, dateKey)
+    ? classesOnDate(course, dateKey)
+    : 0;
+  const highest = Math.max(scheduled, ...bySlot.keys(), 0);
+
+  const out: DayClass[] = [];
+  for (let slot = 1; slot <= highest; slot++) {
+    const session = bySlot.get(slot) ?? null;
+    if (session || slot <= scheduled) {
+      out.push({ slot, session, scheduled: slot <= scheduled });
+    }
+  }
+  return out;
+}
+
 /** One class of one day: the date it falls on and its place within that day. */
 export interface ExpectedClass {
   date: string; // 'YYYY-MM-DD'

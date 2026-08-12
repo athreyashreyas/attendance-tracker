@@ -20,15 +20,6 @@ export function slotOf(session: Session): number {
   return Number.isFinite(n) && n > 1 ? n : 1;
 }
 
-/** Identifies one class of one day for a course: "id|2026-08-12|2". */
-export function classKey(
-  courseId: string,
-  dateKey: string,
-  slot: number
-): string {
-  return `${courseId}|${dateKey}|${slot}`;
-}
-
 /** Clamp a hand-entered count to something a day could actually hold. */
 export function normalizeCount(value: unknown): number {
   const n = Math.floor(Number(value));
@@ -43,11 +34,6 @@ export function normalizeCount(value: unknown): number {
 export function classesOnWeekday(course: Course, day: ScheduleDay): number {
   if (!course.schedule_days.includes(day)) return 0;
   return normalizeCount(course.sessions_per_day?.[day] ?? 1);
-}
-
-/** True when any weekday of this class meets more than once. */
-export function hasDoubleDays(course: Course): boolean {
-  return course.schedule_days.some((d) => classesOnWeekday(course, d) > 1);
 }
 
 /** "1st", "2nd", "3rd"… for naming one class within its day. */

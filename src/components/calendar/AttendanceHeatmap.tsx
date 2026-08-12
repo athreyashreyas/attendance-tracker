@@ -8,9 +8,9 @@ import {
 } from '../../utils/dates';
 import { hexToRgba, readableTextColor, ABSENT_COLOR } from '../../lib/colors';
 import { STATUS_LABEL } from '../../lib/status';
-import { classesOnDate, daysOff } from '../../lib/calculations';
+import { classesOnDay, daysOff, type DayClass } from '../../lib/calculations';
 import { slotOf } from '../../lib/slots';
-import type { Course, Session, SessionStatus } from '../../types';
+import type { Course, Session } from '../../types';
 
 interface AttendanceHeatmapProps {
   course: Course;
@@ -18,10 +18,10 @@ interface AttendanceHeatmapProps {
   semesterEnd: string;
   sessions: Session[];
   /**
-   * The tapped day: every class recorded on it, and how many the schedule
-   * holds, so an unmarked half of a double can still be reached.
+   * The tapped day, as every class it holds: the unmarked half of a double is
+   * in there too, so it can still be reached from the grid.
    */
-  onSelectDate: (dateKey: string, sessions: Session[], scheduled: number) => void;
+  onSelectDate: (dateKey: string, classes: DayClass[]) => void;
 }
 
 /** How one class of a day is painted: its fill and the ink that reads on it. */
@@ -119,52 +119,44 @@ export function AttendanceHeatmap({
                 {week.map((day) => {
                   const key = toDateKey(day);
                   const inRange = key >= rangeStart && key <= rangeEnd;
-                  const daySessions = sessionsByDate.get(key) ?? [];
                   const dayOff = off.has(key);
-                  // How many classes the day holds: what the schedule says, or
-                  // more when extra ones have been added by hand.
-                  const scheduledCount = classesOnDate(course, key);
-                  const total = Math.max(
-                    scheduledCount,
-                    daySessions.reduce((m, s) => Math.max(m, slotOf(s)), 0)
+                  // The day's shape is the app's one answer to what a day
+                  // holds, so the grid reads it rather than working it out.
+                  const classes = classesOnDay(
+                    course,
+                    key,
+                    sessionsByDate.get(key) ?? []
                   );
 
-                  // One band per class of the day, in order. Slots past the
-                  // scheduled count with nothing recorded aren't classes at all
-                  // (deleting the middle of three leaves such a gap), so they
-                  // take no band rather than showing an empty one.
-                  const bands: Band[] = [];
-                  const statuses: (SessionStatus | 'unmarked')[] = [];
-                  for (let slot = 1; slot <= total; slot++) {
-                    const session = daySessions.find((s) => slotOf(s) === slot);
-                    if (!session && slot > scheduledCount) continue;
-                    statuses.push(session?.status ?? 'unmarked');
+                  // One band per class of the day, in order.
+                  const bands: Band[] = classes.map(({ session }) => {
                     if (session?.status === 'present') {
-                      bands.push({
+                      return {
                         background: course.color,
                         text: readableTextColor(course.color),
                         cancelled: false,
-                      });
-                    } else if (session?.status === 'absent') {
-                      bands.push({
+                      };
+                    }
+                    if (session?.status === 'absent') {
+                      return {
                         background: ABSENT_COLOR,
                         text: readableTextColor(ABSENT_COLOR),
                         cancelled: false,
-                      });
-                    } else if (session?.status === 'cancelled') {
-                      bands.push({
+                      };
+                    }
+                    if (session?.status === 'cancelled') {
+                      return {
                         background: CANCELLED_FILL,
                         text: MUTED_INK,
                         cancelled: true,
-                      });
-                    } else {
-                      bands.push({
-                        background: hexToRgba(course.color, 0.12),
-                        text: MUTED_INK,
-                        cancelled: false,
-                      });
+                      };
                     }
-                  }
+                    return {
+                      background: hexToRgba(course.color, 0.12),
+                      text: MUTED_INK,
+                      cancelled: false,
+                    };
+                  });
 
                   let background: string;
                   let color: string;
@@ -195,11 +187,13 @@ export function AttendanceHeatmap({
                     color = '#9B9890';
                   }
 
-                  const interactive = inRange && (total > 0 || dayOff);
+                  const interactive = inRange && (classes.length > 0 || dayOff);
                   const status =
-                    total > 0
-                      ? statuses
-                          .map((s) => (s === 'unmarked' ? 'Not marked' : STATUS_LABEL[s]))
+                    classes.length > 0
+                      ? classes
+                          .map(({ session }) =>
+                            session ? STATUS_LABEL[session.status] : 'Not marked'
+                          )
                           .join(', ')
                       : dayOff
                         ? 'No class'
@@ -213,7 +207,7 @@ export function AttendanceHeatmap({
                       key={key}
                       type="button"
                       disabled={!interactive}
-                      onClick={() => onSelectDate(key, daySessions, scheduledCount)}
+                      onClick={() => onSelectDate(key, classes)}
                       title={description}
                       aria-label={description}
                       style={{ background, color, boxShadow: ring }}
