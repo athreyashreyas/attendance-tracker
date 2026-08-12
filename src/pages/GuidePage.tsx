@@ -49,7 +49,11 @@ export function GuidePage() {
         >
           <ChevronLeft size={22} />
         </button>
-        <span className="font-sans text-xs text-ink-300">Attend {APP_VERSION}</span>
+        {/* Clears the sync dot pinned to the top-right of the scroll area, the
+            same way PageHeader keeps its own right-hand slot out of its way. */}
+        <span className="mr-8 shrink-0 font-sans text-xs text-ink-300">
+          Attend {APP_VERSION}
+        </span>
       </div>
 
       <p className="font-sans text-[10px] font-medium uppercase tracking-wide text-ink-300">
