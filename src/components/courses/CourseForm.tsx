@@ -173,12 +173,14 @@ export function CourseForm({
     () => countClassDays(days, windowStart, windowEnd, excluded, perDay),
     [days, windowStart, windowEnd, excluded, perDay]
   );
-  // Only days off that land on a real class day inside the window count, and a
-  // day off takes every class that day with it.
+  // Only days off that land on a real class day inside the window count. This
+  // one counts days rather than classes: a day off on a day that meets twice is
+  // still one day off, though it takes both classes with it.
   const offCount = useMemo(
     () =>
-      countClassDays(days, windowStart, windowEnd, [], perDay) - classCount,
-    [days, windowStart, windowEnd, perDay, classCount]
+      countClassDays(days, windowStart, windowEnd, []) -
+      countClassDays(days, windowStart, windowEnd, excluded),
+    [days, windowStart, windowEnd, excluded]
   );
 
   // Days that meet more than once, in the order they're shown.
