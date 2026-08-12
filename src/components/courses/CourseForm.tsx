@@ -10,8 +10,8 @@ import { DaysOffPicker } from './DaysOffPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { db } from '../../lib/db';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
-import { countClassDays } from '../../lib/calculations';
-import { MAX_CLASSES_PER_DAY, normalizeCount } from '../../lib/slots';
+import { countClassDays, scheduleHoldsClass } from '../../lib/calculations';
+import { MAX_CLASSES_PER_DAY, normalizeCount, slotOf } from '../../lib/slots';
 import { WEEK_ORDER, DAY_LABELS, formatLongDate } from '../../utils/dates';
 import type { ClassesPerDay, Course, ScheduleDay, Semester } from '../../types';
 
@@ -111,6 +111,7 @@ export function CourseForm({
   const [losses, setLosses] = useState<{
     lostDaysOff: number;
     strandedMarks: number;
+    strandedBySchedule: number;
   } | null>(null);
 
   // Reset fields whenever the sheet opens for a (different) course.
@@ -206,34 +207,59 @@ export function CourseForm({
   }
 
   /**
-   * What narrowing the class dates would cost: days off that fall outside the
-   * new window are dropped for good, and classes already marked outside it stop
-   * appearing on the overview grid. Both are worth saying out loud first.
+   * What a narrower class would cost. Days off outside the new dates are
+   * dropped for good; classes already marked outside them stop appearing on the
+   * overview grid; and classes marked on a day the schedule no longer holds —
+   * a weekday dropped, a double day back to one, a new day off — stay in your
+   * records and your percentage while no longer being expected. All three are
+   * worth saying out loud before saving.
    */
   async function countLosses() {
-    if (!course || !windowStart || !windowEnd) return null;
+    if (!course) return null;
     const windowChanged =
       (start || null) !== (course.start_date ?? null) ||
       (end || null) !== (course.end_date ?? null) ||
       (semesterId || null) !== (course.semester_id ?? null);
-    if (!windowChanged) return null;
+    const narrowed = windowChanged && !!windowStart && !!windowEnd;
 
-    const lostDaysOff = excluded.filter(
-      (d) => d < windowStart || d > windowEnd
-    ).length;
-    const strandedMarks = await db.sessions
+    const lostDaysOff = narrowed
+      ? excluded.filter((d) => d < windowStart || d > windowEnd).length
+      : 0;
+
+    const marked = await db.sessions
       .where('course_id')
       .equals(course.id)
-      .filter(
-        (s) =>
-          !s.deleted_at &&
-          s.status !== 'planned' &&
-          (s.scheduled_date < windowStart || s.scheduled_date > windowEnd)
-      )
-      .count();
+      .filter((s) => !s.deleted_at && s.status !== 'planned')
+      .toArray();
 
-    if (lostDaysOff === 0 && strandedMarks === 0) return null;
-    return { lostDaysOff, strandedMarks };
+    const outside = (dateKey: string) =>
+      narrowed && (dateKey < windowStart || dateKey > windowEnd);
+    const strandedMarks = marked.filter((s) => outside(s.scheduled_date)).length;
+
+    // Only classes the old schedule genuinely held: an extra class added by
+    // hand to a day the class never meets was never on the schedule, so
+    // changing the schedule doesn't strand it.
+    const oldPerDay = course.sessions_per_day ?? {};
+    const oldExcluded = course.excluded_dates ?? [];
+    const strandedBySchedule = marked.filter((s) => {
+      if (outside(s.scheduled_date)) return false; // already counted above
+      const slot = slotOf(s);
+      return (
+        scheduleHoldsClass(
+          course.schedule_days,
+          oldPerDay,
+          oldExcluded,
+          s.scheduled_date,
+          slot
+        ) &&
+        !scheduleHoldsClass(days, perDay, excluded, s.scheduled_date, slot)
+      );
+    }).length;
+
+    if (lostDaysOff === 0 && strandedMarks === 0 && strandedBySchedule === 0) {
+      return null;
+    }
+    return { lostDaysOff, strandedMarks, strandedBySchedule };
   }
 
   async function handleSave(confirmed = false) {
@@ -586,7 +612,7 @@ export function CourseForm({
           {losses ? (
             <div className="space-y-3 rounded-card bg-amber-100 p-3.5">
               <p className="font-sans text-sm font-medium text-amber-600">
-                These dates leave part of the class behind.
+                These changes leave part of the class behind.
               </p>
               <ul className="space-y-1.5 font-sans text-sm text-ink-700">
                 {losses.strandedMarks > 0 && (
@@ -596,6 +622,15 @@ export function CourseForm({
                     outside the new dates. They stay in your records and still
                     count towards your percentage, but they drop off the overview
                     grid for this class.
+                  </li>
+                )}
+                {losses.strandedBySchedule > 0 && (
+                  <li>
+                    {losses.strandedBySchedule} marked{' '}
+                    {losses.strandedBySchedule === 1 ? 'class sits' : 'classes sit'}{' '}
+                    on a day the new schedule no longer holds. They stay in your
+                    records and still count towards your percentage, but the term
+                    stops expecting them.
                   </li>
                 )}
                 {losses.lostDaysOff > 0 && (

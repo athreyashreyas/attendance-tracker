@@ -63,7 +63,7 @@ export function GuidePage() {
       <p className="mt-2 font-sans text-sm text-ink-500">
         {firstRun.current
           ? 'A few minutes now and you will not have to wonder later. You can come back to this any time from Settings.'
-          : 'What changed in this version, and how the app works, whenever you need reminding.'}
+          : 'What changed in this version, and how the app works, whenever you would like to know again.'}
       </p>
 
       <div

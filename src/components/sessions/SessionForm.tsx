@@ -22,8 +22,8 @@ interface SessionFormProps {
   defaultDate?: string;
   /**
    * Which class of the day this records. Given when a particular one was tapped
-   * (the second lecture of a double, say). Left out, a new class goes after
-   * whatever the day already holds.
+   * (the second lecture of a double, say). Left out, a new class takes the first
+   * free place on the day.
    */
   slot?: number;
   /** Status a brand-new session starts on (default 'present'). */
@@ -84,19 +84,17 @@ export function SessionForm({
   async function handleSave() {
     setSaving(true);
     try {
-      // Editing keeps the class it is, unless it's being moved to a day whose
-      // matching class is taken, in which case it joins the end of that day. A
-      // new one takes the class it was opened for, or goes on the end.
+      // Editing keeps the class it is unless it moves day. A new one takes the
+      // class it was opened for, or the first free place on the day.
       let id = session?.id;
       let saveSlot: number;
       if (session) {
-        saveSlot = slotOf(session);
-        if (
-          date !== session.scheduled_date &&
-          (await findSessionForDate(courseId, date, saveSlot))
-        ) {
-          saveSlot = await nextSlotForDate(courseId, date);
-        }
+        // Moved to another day, it takes its place in that day rather than
+        // carrying an ordinal that means nothing there.
+        saveSlot =
+          date === session.scheduled_date
+            ? slotOf(session)
+            : await nextSlotForDate(courseId, date);
       } else if (slot) {
         // The class that was tapped: record it, or edit it if it's since been
         // recorded elsewhere.

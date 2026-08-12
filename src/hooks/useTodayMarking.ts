@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useAllCourses } from './useCourses';
 import { useAllSessions } from './useSessions';
 import { useSemesters } from './useSemesters';
-import { classesOnDate } from '../lib/calculations';
+import { classesOnDate, isWithinTerm } from '../lib/calculations';
 import { slotOf } from '../lib/slots';
 import { isCourseArchived } from '../lib/archive';
 import { todayKey } from '../utils/dates';
@@ -51,12 +51,14 @@ export function useTodayMarking(): TodayMarking {
     // Sessions already sitting on today, by course. These pull an ad-hoc class
     // into the deck even when today isn't one of its recurring days, and an
     // extra lecture added by hand past the scheduled count.
-    const slotsToday = new Map<string, number>();
+    const slotsToday = new Map<string, Set<number>>();
     const decided = new Map<string, Session>();
     for (const s of sessions) {
       if (s.scheduled_date !== today) continue;
       const slot = slotOf(s);
-      slotsToday.set(s.course_id, Math.max(slotsToday.get(s.course_id) ?? 0, slot));
+      const slots = slotsToday.get(s.course_id) ?? new Set<number>();
+      slots.add(slot);
+      slotsToday.set(s.course_id, slots);
       if (s.status !== 'planned') decided.set(`${s.course_id}|${slot}`, s);
     }
 
@@ -69,10 +71,23 @@ export function useTodayMarking(): TodayMarking {
         ? (semesterById.get(course.semester_id) ?? null)
         : null;
       if (isCourseArchived(course, semester)) continue;
-      const scheduled = classesOnDate(course, today);
-      const total = Math.max(scheduled, slotsToday.get(course.id) ?? 0);
-      for (let slot = 1; slot <= total; slot++) {
-        deck.push({ key: `${course.id}|${slot}`, course, slot, total });
+      const placed = slotsToday.get(course.id) ?? new Set<number>();
+      // A class that hasn't started, or has finished, holds nothing today
+      // whatever its weekdays say. It can still be asked about when a session
+      // has been placed on today by hand.
+      const scheduled = isWithinTerm(course, semester, today)
+        ? classesOnDate(course, today)
+        : 0;
+      const highest = Math.max(scheduled, ...placed, 0);
+      // Slots between the scheduled ones and a hand-placed extra don't exist
+      // (deleting the middle class of three leaves such a gap), so the deck
+      // skips them rather than asking about a class that isn't there.
+      const slots: number[] = [];
+      for (let slot = 1; slot <= highest; slot++) {
+        if (slot <= scheduled || placed.has(slot)) slots.push(slot);
+      }
+      for (const slot of slots) {
+        deck.push({ key: `${course.id}|${slot}`, course, slot, total: highest });
       }
     }
 

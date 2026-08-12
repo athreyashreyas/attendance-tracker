@@ -3,7 +3,7 @@ import { db } from '../lib/db';
 import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { nowIso, fromDateKey } from '../utils/dates';
-import { expectedClassesInRange } from '../lib/calculations';
+import { expectedClassesInRange, termWindow } from '../lib/calculations';
 import { slotOf } from '../lib/slots';
 import type { Course, Session, SessionStatus } from '../types';
 
@@ -61,13 +61,19 @@ export async function findSessionForDate(
   return rows.find((s) => slotOf(s) === slot);
 }
 
-/** The slot a class added to this date should take: after everything on it. */
+/**
+ * The slot a class added to this date should take: the first one free. Filling
+ * a gap left by a deleted class keeps a day's numbering tidy, rather than
+ * leaving a hole and adding on the end.
+ */
 export async function nextSlotForDate(
   courseId: string,
   dateKey: string
 ): Promise<number> {
-  const rows = await sessionsOnDate(courseId, dateKey);
-  return rows.reduce((max, s) => Math.max(max, slotOf(s)), 0) + 1;
+  const taken = new Set((await sessionsOnDate(courseId, dateKey)).map(slotOf));
+  let slot = 1;
+  while (taken.has(slot)) slot += 1;
+  return slot;
 }
 
 export interface SessionInput {
@@ -150,10 +156,18 @@ export function useSessionMutations() {
     endKey: string
   ): Promise<number> {
     let count = 0;
+    // A class with no dates of its own runs for as long as its term does, so
+    // the terms are needed to know where its schedule stops.
+    const semesters = await db.semesters.filter((s) => !s.deleted_at).toArray();
+    const semesterById = new Map(semesters.map((s) => [s.id, s]));
     for (const course of courses) {
-      // Clamp the break to the course's own schedule window.
-      const cStart = course.start_date ?? startKey;
-      const cEnd = course.end_date ?? endKey;
+      // Clamp the break to the window the class actually runs in.
+      const semester = course.semester_id
+        ? (semesterById.get(course.semester_id) ?? null)
+        : null;
+      const { start, end } = termWindow(course, semester);
+      const cStart = start ?? startKey;
+      const cEnd = end ?? endKey;
       const rangeStart = fromDateKey(startKey > cStart ? startKey : cStart);
       const rangeEnd = fromDateKey(endKey < cEnd ? endKey : cEnd);
       if (rangeStart > rangeEnd) continue;

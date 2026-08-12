@@ -24,7 +24,12 @@ import { DateInput } from '../components/ui/DateInput';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { useCourseView } from '../hooks/useCourseView';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
-import { classesOnDate, expectedClassesInRange } from '../lib/calculations';
+import {
+  classesOnDate,
+  expectedClassesInRange,
+  isWithinTerm,
+  termWindow,
+} from '../lib/calculations';
 import { classKey, slotLabel, slotOf } from '../lib/slots';
 import { STATUS_LABEL } from '../lib/status';
 import {
@@ -34,7 +39,7 @@ import {
   formatSessionDate,
   todayKey,
 } from '../utils/dates';
-import type { Course, Session, SessionStatus } from '../types';
+import type { Course, Semester, Session, SessionStatus } from '../types';
 
 /** Whether a break covers one day or a run of them. */
 type BreakSpan = 'single' | 'range';
@@ -96,6 +101,17 @@ export function CalendarPage() {
     return set;
   }, [allSessions, courseById]);
 
+  const semesterById = useMemo(() => {
+    const map = new Map<string, Semester>();
+    for (const s of semesters) map.set(s.id, s);
+    return map;
+  }, [semesters]);
+
+  /** The term a class belongs to, for the dates it should run between. */
+  function termOf(course: Course): Semester | null {
+    return course.semester_id ? (semesterById.get(course.semester_id) ?? null) : null;
+  }
+
   // Bound navigation to a single semester's span; free otherwise.
   const monthBounds = useMemo(() => {
     if (filter === 'all' || filter === 'other') return null;
@@ -121,7 +137,13 @@ export function CalendarPage() {
     const gridEnd = endOfWeek(endOfMonth(clampedMonth), { weekStartsOn: 0 });
     const map = new Map<string, PlannedClass[]>();
     for (const c of courses) {
-      for (const cls of expectedClassesInRange(c, gridStart, gridEnd)) {
+      // A class with no dates of its own runs for as long as its term does, so
+      // the schedule stops at the term's edges rather than running on forever.
+      const { start, end } = termWindow(c, termOf(c));
+      const from = start && start > toDateKey(gridStart) ? fromDateKey(start) : gridStart;
+      const to = end && end < toDateKey(gridEnd) ? fromDateKey(end) : gridEnd;
+      if (from > to) continue;
+      for (const cls of expectedClassesInRange(c, from, to)) {
         if (recordedKeys.has(classKey(c.id, cls.date, cls.slot))) continue;
         const list = map.get(cls.date) ?? [];
         list.push({ course: c, slot: cls.slot, total: cls.total });
@@ -129,7 +151,8 @@ export function CalendarPage() {
       }
     }
     return map;
-  }, [courses, clampedMonth, recordedKeys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses, clampedMonth, recordedKeys, semesterById]);
 
   const canPrev = monthBounds ? clampedMonth > monthBounds.min : true;
   const canNext = monthBounds ? clampedMonth < monthBounds.max : true;
@@ -163,14 +186,17 @@ export function CalendarPage() {
     const map = new Map<string, number>();
     if (!selectedDay) return map;
     for (const c of courses) {
-      const scheduled = classesOnDate(c, selectedDay);
+      const scheduled = isWithinTerm(c, termOf(c), selectedDay)
+        ? classesOnDate(c, selectedDay)
+        : 0;
       if (scheduled > 0) map.set(c.id, scheduled);
     }
     for (const s of byDate.get(selectedDay) ?? []) {
       map.set(s.course_id, Math.max(map.get(s.course_id) ?? 0, slotOf(s)));
     }
     return map;
-  }, [selectedDay, courses, byDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDay, courses, byDate, semesterById]);
 
   function sessionSlotLabel(session: Session): string | null {
     return slotLabel(slotOf(session), dayTotals.get(session.course_id) ?? 1);

@@ -4,6 +4,7 @@ import { db } from './db';
 import { useSyncStore } from '../stores/syncStore';
 import { nowIso } from '../utils/dates';
 import { toRemote } from '../utils/records';
+import { slotOf } from './slots';
 import type {
   TableName,
   SyncOperation,
@@ -41,6 +42,44 @@ export class SyncEngine {
   // ---------------------------------------------------------------- hydrate
 
   /**
+   * Two devices offline can each record the same class of the same day: the app
+   * has no way to see the other's row, so both are created with their own id
+   * and both survive the merge, counting twice toward attendance.
+   *
+   * Once the pull has landed, keep one row per class of a day and tombstone the
+   * rest. Latest write wins, with the id breaking ties, so every device reaches
+   * the same answer without having to agree in advance.
+   */
+  private async dedupeSessions(): Promise<void> {
+    const rows = await db.sessions.filter((s) => !s.deleted_at).toArray();
+    const groups = new Map<string, LocalSession[]>();
+    for (const row of rows) {
+      const key = `${row.course_id}|${row.scheduled_date}|${slotOf(row)}`;
+      const group = groups.get(key) ?? [];
+      group.push(row);
+      groups.set(key, group);
+    }
+
+    let removed = 0;
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      group.sort(
+        (a, b) => b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id)
+      );
+      for (const duplicate of group.slice(1)) {
+        await this.softDelete('sessions', duplicate);
+        removed += 1;
+      }
+    }
+
+    if (removed > 0 && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('attend:sync', { detail: { table: 'sessions' } })
+      );
+    }
+  }
+
+  /**
    * Pull the user's records from Supabase into Dexie. First call pulls every
    * non-deleted row; subsequent calls only pull rows changed since last sync.
    */
@@ -60,6 +99,8 @@ export class SyncEngine {
     // table pulled cleanly: advancing past rows a failed table never delivered
     // would skip them on every future delta.
     let anyTableFailed = false;
+    // Only worth reconciling when the pull actually brought something in.
+    let pulledSessions = false;
     try {
       for (const table of TABLES) {
         let query = supabase.from(table).select('*').eq('user_id', userId);
@@ -84,6 +125,7 @@ export class SyncEngine {
           }
         }
         await this.bulkPutLocal(table, rows as AnyLocal[]);
+        if (table === 'sessions' && rows.length > 0) pulledSessions = true;
         // Nudge the UI to re-read Dexie for the tables that actually changed,
         // so a pulled-in edit (e.g. another device's colour change) renders at
         // once instead of waiting for a navigation to refetch.
@@ -93,6 +135,8 @@ export class SyncEngine {
           );
         }
       }
+      // Whatever the merge brought in, one class of a day should be one row.
+      if (pulledSessions) await this.dedupeSessions();
       // Resume from the newest row seen; fall back to the client clock only on a
       // first sync that returned nothing (an empty account). Keep the old cursor
       // if any table failed, so its missed rows are re-fetched next time.

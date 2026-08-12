@@ -17,8 +17,11 @@ interface AttendanceHeatmapProps {
   semesterStart: string;
   semesterEnd: string;
   sessions: Session[];
-  /** Every class recorded on the tapped day, in order. */
-  onSelectDate: (dateKey: string, sessions: Session[]) => void;
+  /**
+   * The tapped day: every class recorded on it, and how many the schedule
+   * holds, so an unmarked half of a double can still be reached.
+   */
+  onSelectDate: (dateKey: string, sessions: Session[], scheduled: number) => void;
 }
 
 /** How one class of a day is painted: its fill and the ink that reads on it. */
@@ -126,11 +129,15 @@ export function AttendanceHeatmap({
                     daySessions.reduce((m, s) => Math.max(m, slotOf(s)), 0)
                   );
 
-                  // One band per class of the day, in order.
+                  // One band per class of the day, in order. Slots past the
+                  // scheduled count with nothing recorded aren't classes at all
+                  // (deleting the middle of three leaves such a gap), so they
+                  // take no band rather than showing an empty one.
                   const bands: Band[] = [];
                   const statuses: (SessionStatus | 'unmarked')[] = [];
                   for (let slot = 1; slot <= total; slot++) {
                     const session = daySessions.find((s) => slotOf(s) === slot);
+                    if (!session && slot > scheduledCount) continue;
                     statuses.push(session?.status ?? 'unmarked');
                     if (session?.status === 'present') {
                       bands.push({
@@ -206,7 +213,7 @@ export function AttendanceHeatmap({
                       key={key}
                       type="button"
                       disabled={!interactive}
-                      onClick={() => onSelectDate(key, daySessions)}
+                      onClick={() => onSelectDate(key, daySessions, scheduledCount)}
                       title={description}
                       aria-label={description}
                       style={{ background, color, boxShadow: ring }}

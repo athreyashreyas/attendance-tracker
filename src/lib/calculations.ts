@@ -4,6 +4,7 @@ import type {
   ClassesPerDay,
   Course,
   ScheduleDay,
+  Semester,
   TermProjection,
 } from '../types';
 import { format } from 'date-fns';
@@ -164,6 +165,50 @@ export function classesOnDate(course: Course, dateKey: string): number {
   if (isDayOff(course, dateKey)) return 0;
   const day = new Date(`${dateKey}T00:00:00`).getDay() as ScheduleDay;
   return classesOnWeekday(course, day);
+}
+
+/**
+ * The dates a class runs between: its own when set, otherwise the term it
+ * belongs to. Either end may be open, which an ongoing standalone class is.
+ */
+export function termWindow(
+  course: Course,
+  semester: Semester | null
+): { start: string | null; end: string | null } {
+  return {
+    start: course.start_date ?? semester?.start_date ?? null,
+    end: course.end_date ?? semester?.end_date ?? null,
+  };
+}
+
+/** True when a date falls inside the class's term (open ends include everything). */
+export function isWithinTerm(
+  course: Course,
+  semester: Semester | null,
+  dateKey: string
+): boolean {
+  const { start, end } = termWindow(course, semester);
+  if (start && dateKey < start) return false;
+  if (end && dateKey > end) return false;
+  return true;
+}
+
+/**
+ * Whether a schedule holds a particular class of a particular day. Takes the
+ * parts rather than a course, so the class form can ask it of the settings
+ * being edited, before anything is saved.
+ */
+export function scheduleHoldsClass(
+  scheduleDays: ScheduleDay[],
+  perDay: ClassesPerDay,
+  excluded: string[],
+  dateKey: string,
+  slot: number
+): boolean {
+  if (excluded.includes(dateKey)) return false;
+  const day = new Date(`${dateKey}T00:00:00`).getDay() as ScheduleDay;
+  if (!scheduleDays.includes(day)) return false;
+  return slot <= normalizeCount(perDay[day] ?? 1);
 }
 
 /** One class of one day: the date it falls on and its place within that day. */

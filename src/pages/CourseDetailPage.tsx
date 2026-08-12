@@ -26,6 +26,25 @@ import type { Session, SessionStatus, TermProjection } from '../types';
 
 type StatusFilter = SessionStatus | 'all';
 
+/**
+ * The classes a day holds, recorded or not: the scheduled ones, plus any extra
+ * added by hand past them. Slots with neither aren't classes and are left out,
+ * which is what a deleted middle class leaves behind.
+ */
+function dayClasses(
+  sessions: Session[],
+  scheduled: number
+): { slot: number; session: Session | null }[] {
+  const bySlot = new Map(sessions.map((s) => [slotOf(s), s]));
+  const highest = Math.max(scheduled, ...bySlot.keys(), 0);
+  const out: { slot: number; session: Session | null }[] = [];
+  for (let slot = 1; slot <= highest; slot++) {
+    const session = bySlot.get(slot) ?? null;
+    if (session || slot <= scheduled) out.push({ slot, session });
+  }
+  return out;
+}
+
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -39,13 +58,14 @@ export function CourseDetailPage() {
     open: boolean;
     session: Session | null;
     date?: string;
+    slot?: number;
   }>({ open: false, session: null });
   const [editCourse, setEditCourse] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   /** A grid day holding several classes, waiting for one to be picked. */
   const [dayPick, setDayPick] = useState<{
     date: string;
-    sessions: Session[];
+    classes: { slot: number; session: Session | null }[];
   } | null>(null);
 
   const classesExpanded = useUiStore((s) =>
@@ -265,15 +285,18 @@ export function CourseDetailPage() {
               semesterStart={winStart!}
               semesterEnd={winEnd!}
               sessions={sessions ?? []}
-              onSelectDate={(date, daySessions) => {
+              onSelectDate={(date, daySessions, scheduled) => {
                 // A day can hold more than one class now, so a square with two
-                // behind it asks which one rather than guessing.
-                if (daySessions.length > 1) setDayPick({ date, sessions: daySessions });
+                // behind it asks which one rather than guessing. The unmarked
+                // half of a double counts: it's the one you came to record.
+                const classes = dayClasses(daySessions, scheduled);
+                if (classes.length > 1) setDayPick({ date, classes });
                 else
                   setSessionForm({
                     open: true,
-                    session: daySessions[0] ?? null,
+                    session: classes[0]?.session ?? null,
                     date,
+                    slot: classes[0]?.slot,
                   });
               }}
             />
@@ -290,24 +313,37 @@ export function CourseDetailPage() {
       >
         <div className="space-y-2 pb-2">
           <p className="font-sans text-sm text-ink-500">
-            {dayPick?.sessions.length} classes on this day. Pick the one to
-            change.
+            {dayPick?.classes.length} classes on this day. Pick the one to record
+            or change.
           </p>
-          {dayPick?.sessions.map((s) => (
+          {dayPick?.classes.map(({ slot, session }) => (
             <button
-              key={s.id}
+              key={slot}
               type="button"
               onClick={() => {
                 setDayPick(null);
-                setSessionForm({ open: true, session: s, date: dayPick.date });
+                setSessionForm({
+                  open: true,
+                  session,
+                  date: dayPick.date,
+                  slot,
+                });
               }}
-              className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+              className={`flex w-full items-center gap-3 rounded-card p-3.5 text-left ${
+                session
+                  ? 'bg-parchment-100'
+                  : 'border border-dashed border-parchment-300'
+              }`}
             >
               <span className="min-w-0 flex-1 font-sans text-sm font-medium text-ink-900">
-                {ordinal(slotOf(s))} class
+                {ordinal(slot)} class
               </span>
-              <span className="shrink-0 font-sans text-xs text-ink-500">
-                {STATUS_LABEL[s.status]}
+              <span
+                className={`shrink-0 font-sans text-xs ${
+                  session ? 'text-ink-500' : 'text-ink-300'
+                }`}
+              >
+                {session ? STATUS_LABEL[session.status] : 'Not marked'}
               </span>
             </button>
           ))}
@@ -320,6 +356,7 @@ export function CourseDetailPage() {
         courseId={course.id}
         session={sessionForm.session}
         defaultDate={sessionForm.date}
+        slot={sessionForm.slot}
       />
 
       <CourseForm
