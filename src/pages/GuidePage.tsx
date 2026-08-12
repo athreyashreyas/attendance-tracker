@@ -144,14 +144,18 @@ export function GuidePage() {
         </div>
       )}
 
-      <Button
-        fullWidth
-        size="lg"
-        className="mt-8"
-        onClick={() => navigate('/dashboard', { replace: true })}
-      >
-        {firstRun.current ? 'Start using Attend' : 'Back to Attend'}
-      </Button>
+      {/* Full width on a phone, where it's the thumb's target; on anything
+          wider it settles to its own size rather than stretching the width of
+          the reading column. */}
+      <div className="mt-8 flex justify-center">
+        <Button
+          size="lg"
+          className="w-full sm:w-auto sm:px-12"
+          onClick={() => navigate('/dashboard', { replace: true })}
+        >
+          {firstRun.current ? 'Start using Attend' : 'Back to Attend'}
+        </Button>
+      </div>
     </div>
   );
 }
