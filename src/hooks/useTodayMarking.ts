@@ -2,20 +2,32 @@ import { useMemo } from 'react';
 import { useAllCourses } from './useCourses';
 import { useAllSessions } from './useSessions';
 import { useSemesters } from './useSemesters';
-import { isDayOff } from '../lib/calculations';
+import { classesOnDate } from '../lib/calculations';
+import { slotOf } from '../lib/slots';
 import { isCourseArchived } from '../lib/archive';
 import { todayKey } from '../utils/dates';
-import type { Course, ScheduleDay, Session } from '../types';
+import type { Course, Session } from '../types';
+
+/** One class of today: a course, and which of its classes today this is. */
+export interface TodayClass {
+  /** Stable identity for lists and lookups: "courseId|slot". */
+  key: string;
+  course: Course;
+  slot: number;
+  /** Classes this course holds today, so a slot can be named "2nd of 2". */
+  total: number;
+}
 
 export interface TodayMarking {
-  /** Today's full deck: every class on today (a recurring day or an ad-hoc
-   *  session already placed on today), regardless of the active view filter. */
-  deck: Course[];
-  /** Decided sessions on today (present/absent/cancelled), keyed by course id.
-   *  A 'planned' session still counts as unmarked, so it's excluded here. */
+  /** Today's full deck: every class on today (a recurring one or an ad-hoc
+   *  session already placed on today), regardless of the active view filter.
+   *  A class that meets twice today appears twice. */
+  deck: TodayClass[];
+  /** Decided sessions on today (present/absent/cancelled), keyed by
+   *  "courseId|slot". A 'planned' session still counts as unmarked. */
   markedToday: Map<string, Session>;
   /** Deck classes that still need a present/absent/cancelled today. */
-  toMark: Course[];
+  toMark: TodayClass[];
   /** True until both courses and sessions have loaded from Dexie. */
   isLoading: boolean;
 }
@@ -31,36 +43,45 @@ export function useTodayMarking(): TodayMarking {
   const { data: semesters } = useSemesters();
 
   const today = todayKey();
-  const todayDow = new Date().getDay() as ScheduleDay;
 
   return useMemo(() => {
     const sessions = allSessions ?? [];
     const semesterById = new Map((semesters ?? []).map((s) => [s.id, s]));
 
-    // Course ids with any session on today (used to pull ad-hoc classes into
-    // the deck even when today isn't one of their recurring days).
-    const withSessionToday = new Set<string>();
-    const markedToday = new Map<string, Session>();
+    // Sessions already sitting on today, by course. These pull an ad-hoc class
+    // into the deck even when today isn't one of its recurring days, and an
+    // extra lecture added by hand past the scheduled count.
+    const slotsToday = new Map<string, number>();
+    const decided = new Map<string, Session>();
     for (const s of sessions) {
       if (s.scheduled_date !== today) continue;
-      withSessionToday.add(s.course_id);
-      if (s.status !== 'planned') markedToday.set(s.course_id, s);
+      const slot = slotOf(s);
+      slotsToday.set(s.course_id, Math.max(slotsToday.get(s.course_id) ?? 0, slot));
+      if (s.status !== 'planned') decided.set(`${s.course_id}|${slot}`, s);
     }
 
     // A class the user has marked as off today isn't asked about, unless they've
     // already put a session on today themselves. Archived classes never appear:
     // they're done with, whatever their schedule says.
-    const deck = (courses ?? []).filter((c) => {
-      const semester = c.semester_id
-        ? (semesterById.get(c.semester_id) ?? null)
+    const deck: TodayClass[] = [];
+    for (const course of courses ?? []) {
+      const semester = course.semester_id
+        ? (semesterById.get(course.semester_id) ?? null)
         : null;
-      if (isCourseArchived(c, semester)) return false;
-      return (
-        (c.schedule_days.includes(todayDow) && !isDayOff(c, today)) ||
-        withSessionToday.has(c.id)
-      );
-    });
-    const toMark = deck.filter((c) => !markedToday.has(c.id));
+      if (isCourseArchived(course, semester)) continue;
+      const scheduled = classesOnDate(course, today);
+      const total = Math.max(scheduled, slotsToday.get(course.id) ?? 0);
+      for (let slot = 1; slot <= total; slot++) {
+        deck.push({ key: `${course.id}|${slot}`, course, slot, total });
+      }
+    }
+
+    const markedToday = new Map<string, Session>();
+    for (const item of deck) {
+      const session = decided.get(item.key);
+      if (session) markedToday.set(item.key, session);
+    }
+    const toMark = deck.filter((item) => !markedToday.has(item.key));
 
     return {
       deck,
@@ -68,13 +89,5 @@ export function useTodayMarking(): TodayMarking {
       toMark,
       isLoading: coursesLoading || sessionsLoading,
     };
-  }, [
-    courses,
-    allSessions,
-    semesters,
-    today,
-    todayDow,
-    coursesLoading,
-    sessionsLoading,
-  ]);
+  }, [courses, allSessions, semesters, today, coursesLoading, sessionsLoading]);
 }

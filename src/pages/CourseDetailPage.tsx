@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronDown, Pencil } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
+import { BottomSheet } from '../components/ui/BottomSheet';
 import { ProgressRing } from '../components/ui/ProgressRing';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Fab } from '../components/ui/Fab';
@@ -18,7 +19,8 @@ import { useAttendanceStats, useTermProjection } from '../hooks/useAttendanceSta
 import { useUiStore } from '../stores/uiStore';
 import { TONE_CLASSES, STATUS_LABEL, STATUS_OPTIONS } from '../lib/status';
 import { isCourseArchived } from '../lib/archive';
-import { formatMonthLabel, fromDateKey } from '../utils/dates';
+import { ordinal, slotOf } from '../lib/slots';
+import { formatMonthLabel, formatSessionDate, fromDateKey } from '../utils/dates';
 import { listContainer } from '../lib/motion';
 import type { Session, SessionStatus, TermProjection } from '../types';
 
@@ -40,6 +42,11 @@ export function CourseDetailPage() {
   }>({ open: false, session: null });
   const [editCourse, setEditCourse] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  /** A grid day holding several classes, waiting for one to be picked. */
+  const [dayPick, setDayPick] = useState<{
+    date: string;
+    sessions: Session[];
+  } | null>(null);
 
   const classesExpanded = useUiStore((s) =>
     id ? s.classesExpanded[id] ?? true : true
@@ -258,15 +265,54 @@ export function CourseDetailPage() {
               semesterStart={winStart!}
               semesterEnd={winEnd!}
               sessions={sessions ?? []}
-              onSelectDate={(date, session) =>
-                setSessionForm({ open: true, session: session ?? null, date })
-              }
+              onSelectDate={(date, daySessions) => {
+                // A day can hold more than one class now, so a square with two
+                // behind it asks which one rather than guessing.
+                if (daySessions.length > 1) setDayPick({ date, sessions: daySessions });
+                else
+                  setSessionForm({
+                    open: true,
+                    session: daySessions[0] ?? null,
+                    date,
+                  });
+              }}
             />
           </div>
         </div>
       )}
 
       <Fab onClick={openNewSession} label="Add class" />
+
+      <BottomSheet
+        open={dayPick !== null}
+        onClose={() => setDayPick(null)}
+        title={dayPick ? formatSessionDate(dayPick.date) : ''}
+      >
+        <div className="space-y-2 pb-2">
+          <p className="font-sans text-sm text-ink-500">
+            {dayPick?.sessions.length} classes on this day. Pick the one to
+            change.
+          </p>
+          {dayPick?.sessions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => {
+                setDayPick(null);
+                setSessionForm({ open: true, session: s, date: dayPick.date });
+              }}
+              className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+            >
+              <span className="min-w-0 flex-1 font-sans text-sm font-medium text-ink-900">
+                {ordinal(slotOf(s))} class
+              </span>
+              <span className="shrink-0 font-sans text-xs text-ink-500">
+                {STATUS_LABEL[s.status]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
 
       <SessionForm
         open={sessionForm.open}

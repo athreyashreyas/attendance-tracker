@@ -24,7 +24,8 @@ import { DateInput } from '../components/ui/DateInput';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { useCourseView } from '../hooks/useCourseView';
 import { useAllSessions, useSessionMutations } from '../hooks/useSessions';
-import { expectedDatesInRange } from '../lib/calculations';
+import { classesOnDate, expectedClassesInRange } from '../lib/calculations';
+import { classKey, slotLabel, slotOf } from '../lib/slots';
 import { STATUS_LABEL } from '../lib/status';
 import {
   fromDateKey,
@@ -42,7 +43,16 @@ interface FormTarget {
   courseId: string;
   session: Session | null;
   date?: string;
+  /** Which class of the day to record. Left out, a new one goes on the end. */
+  slot?: number;
   defaultStatus?: SessionStatus;
+}
+
+/** A scheduled class with nothing recorded against it yet. */
+interface PlannedClass {
+  course: Course;
+  slot: number;
+  total: number;
 }
 
 export function CalendarPage() {
@@ -74,10 +84,14 @@ export function CalendarPage() {
     return map;
   }, [allSessions, courseById]);
 
+  // One entry per class already recorded, so a day that meets twice can have
+  // its first class marked and its second still show as scheduled.
   const recordedKeys = useMemo(() => {
     const set = new Set<string>();
     for (const s of allSessions ?? []) {
-      if (courseById.has(s.course_id)) set.add(`${s.course_id}|${s.scheduled_date}`);
+      if (courseById.has(s.course_id)) {
+        set.add(classKey(s.course_id, s.scheduled_date, slotOf(s)));
+      }
     }
     return set;
   }, [allSessions, courseById]);
@@ -105,14 +119,13 @@ export function CalendarPage() {
   const plannedByDate = useMemo(() => {
     const gridStart = startOfWeek(startOfMonth(clampedMonth), { weekStartsOn: 0 });
     const gridEnd = endOfWeek(endOfMonth(clampedMonth), { weekStartsOn: 0 });
-    const map = new Map<string, Course[]>();
+    const map = new Map<string, PlannedClass[]>();
     for (const c of courses) {
-      for (const d of expectedDatesInRange(c, gridStart, gridEnd)) {
-        const key = toDateKey(d);
-        if (recordedKeys.has(`${c.id}|${key}`)) continue;
-        const list = map.get(key) ?? [];
-        list.push(c);
-        map.set(key, list);
+      for (const cls of expectedClassesInRange(c, gridStart, gridEnd)) {
+        if (recordedKeys.has(classKey(c.id, cls.date, cls.slot))) continue;
+        const list = map.get(cls.date) ?? [];
+        list.push({ course: c, slot: cls.slot, total: cls.total });
+        map.set(cls.date, list);
       }
     }
     return map;
@@ -129,8 +142,8 @@ export function CalendarPage() {
       // Planned sessions read as outlined (upcoming), decided ones as filled.
       dots.push({ color, recorded: s.status !== 'planned' });
     }
-    for (const c of plannedByDate.get(dateKey) ?? []) {
-      dots.push({ color: c.color, recorded: false });
+    for (const p of plannedByDate.get(dateKey) ?? []) {
+      dots.push({ color: p.course.color, recorded: false });
     }
     return dots;
   }
@@ -143,6 +156,25 @@ export function CalendarPage() {
   const daySessions = selectedDay ? (byDate.get(selectedDay) ?? []) : [];
   const dayDecided = daySessions.filter((s) => s.status !== 'planned');
   const dayPlannedSessions = daySessions.filter((s) => s.status === 'planned');
+
+  // How many classes each course holds on the open day, so a class that meets
+  // twice can name its halves rather than list the same title twice.
+  const dayTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!selectedDay) return map;
+    for (const c of courses) {
+      const scheduled = classesOnDate(c, selectedDay);
+      if (scheduled > 0) map.set(c.id, scheduled);
+    }
+    for (const s of byDate.get(selectedDay) ?? []) {
+      map.set(s.course_id, Math.max(map.get(s.course_id) ?? 0, slotOf(s)));
+    }
+    return map;
+  }, [selectedDay, courses, byDate]);
+
+  function sessionSlotLabel(session: Session): string | null {
+    return slotLabel(slotOf(session), dayTotals.get(session.course_id) ?? 1);
+  }
   const dayPlannedRecurring = selectedDay
     ? (plannedByDate.get(selectedDay) ?? [])
     : [];
@@ -233,6 +265,7 @@ export function CalendarPage() {
 
           {dayDecided.map((s) => {
             const course = courseById.get(s.course_id);
+            const label = sessionSlotLabel(s);
             return (
               <button
                 key={s.id}
@@ -244,8 +277,15 @@ export function CalendarPage() {
                   className="h-8 w-1.5 shrink-0 rounded-full"
                   style={{ backgroundColor: course?.color ?? '#9B9890' }}
                 />
-                <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
-                  {course?.name ?? 'Class'}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
+                    {course?.name ?? 'Class'}
+                  </span>
+                  {label && (
+                    <span className="block font-sans text-xs text-ink-300">
+                      {label}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 font-sans text-xs text-ink-500">
                   {STATUS_LABEL[s.status]}
@@ -258,6 +298,7 @@ export function CalendarPage() {
               scheduled classes (tap to record). */}
           {dayPlannedSessions.map((s) => {
             const course = courseById.get(s.course_id);
+            const label = sessionSlotLabel(s);
             return (
               <button
                 key={s.id}
@@ -269,8 +310,15 @@ export function CalendarPage() {
                   className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
                   style={{ backgroundColor: course?.color ?? '#9B9890' }}
                 />
-                <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
-                  {course?.name ?? 'Class'}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
+                    {course?.name ?? 'Class'}
+                  </span>
+                  {label && (
+                    <span className="block font-sans text-xs text-ink-300">
+                      {label}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 font-sans text-xs text-ink-300">
                   Tap to mark
@@ -279,31 +327,42 @@ export function CalendarPage() {
             );
           })}
 
-          {dayPlannedRecurring.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() =>
-                openForm({
-                  courseId: c.id,
-                  session: null,
-                  date: selectedDay ?? undefined,
-                })
-              }
-              className="flex w-full items-center gap-3 rounded-card border border-dashed border-parchment-300 p-3.5 text-left"
-            >
-              <span
-                className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
-                style={{ backgroundColor: c.color }}
-              />
-              <span className="min-w-0 flex-1 truncate font-sans text-sm font-medium text-ink-900">
-                {c.name}
-              </span>
-              <span className="shrink-0 font-sans text-xs text-ink-300">
-                Tap to mark
-              </span>
-            </button>
-          ))}
+          {dayPlannedRecurring.map((p) => {
+            const label = slotLabel(p.slot, p.total);
+            return (
+              <button
+                key={`${p.course.id}|${p.slot}`}
+                type="button"
+                onClick={() =>
+                  openForm({
+                    courseId: p.course.id,
+                    session: null,
+                    date: selectedDay ?? undefined,
+                    slot: p.slot,
+                  })
+                }
+                className="flex w-full items-center gap-3 rounded-card border border-dashed border-parchment-300 p-3.5 text-left"
+              >
+                <span
+                  className="h-8 w-1.5 shrink-0 rounded-full opacity-50"
+                  style={{ backgroundColor: p.course.color }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-sans text-sm font-medium text-ink-900">
+                    {p.course.name}
+                  </span>
+                  {label && (
+                    <span className="block font-sans text-xs text-ink-300">
+                      {label}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 font-sans text-xs text-ink-300">
+                  Tap to mark
+                </span>
+              </button>
+            );
+          })}
 
           {courses.length > 0 && (
             <div className="pt-2">
@@ -311,7 +370,8 @@ export function CalendarPage() {
                 Add an extra class
               </p>
               <p className="mb-2 font-sans text-xs text-ink-300">
-                Adds it to this day unmarked, ready to record later.
+                Adds another class on this day, unmarked and ready to record
+                later. A class already on the day keeps its own mark.
               </p>
               <div className="flex flex-wrap gap-2">
                 {courses.map((c) => (
@@ -345,6 +405,7 @@ export function CalendarPage() {
           courseId={form.courseId}
           session={form.session}
           defaultDate={form.date}
+          slot={form.slot}
           defaultStatus={form.defaultStatus}
         />
       )}

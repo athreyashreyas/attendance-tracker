@@ -3,6 +3,7 @@ import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
 import { SyncDot } from '../ui/SyncIndicator';
 import { useAutoArchive } from '../../hooks/useAutoArchive';
+import { useGuidePrompt } from '../../hooks/useGuidePrompt';
 
 /**
  * App shell sized via the html element's height (see index.css), which equals
@@ -14,6 +15,8 @@ import { useAutoArchive } from '../../hooks/useAutoArchive';
 export function AppShell() {
   // Terms and classes file themselves away once their last date has passed.
   useAutoArchive();
+  // First run gets the walk-through; a new version gets What's new.
+  useGuidePrompt();
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-parchment-100 md:flex-row">

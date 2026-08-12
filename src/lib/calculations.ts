@@ -1,11 +1,13 @@
 import type {
   Session,
   AttendanceStats,
+  ClassesPerDay,
   Course,
   ScheduleDay,
   TermProjection,
 } from '../types';
 import { format } from 'date-fns';
+import { classesOnWeekday, normalizeCount, slotOf } from './slots';
 
 /**
  * Core attendance percentage and threshold calculations.
@@ -79,21 +81,26 @@ export function computeTermProjection(
   const present = decided.filter((s) => s.status === 'present').length;
   const absent = decided.filter((s) => s.status === 'absent').length;
 
-  // Dates already settled (present/absent/cancelled) shouldn't be counted as
-  // "still to come".
-  const decidedDates = new Set(decided.map((s) => s.scheduled_date));
-
-  // Future scheduled dates with nothing recorded yet.
-  const expected = generateExpectedDates(
-    course,
-    new Date(`${termStart}T00:00:00`),
-    new Date(`${termEnd}T00:00:00`)
+  // Classes already settled (present/absent/cancelled) shouldn't be counted as
+  // "still to come". A day that meets twice settles one class at a time, so
+  // these are counted by date and slot rather than by date alone.
+  const decidedKeys = new Set(
+    decided.map((s) => `${s.scheduled_date}|${slotOf(s)}`)
   );
-  const expectedKeys = new Set(expected.map((d) => format(d, 'yyyy-MM-dd')));
+
+  // Future scheduled classes with nothing recorded yet.
+  const expected = expandToClasses(
+    course,
+    generateExpectedDates(
+      course,
+      new Date(`${termStart}T00:00:00`),
+      new Date(`${termEnd}T00:00:00`)
+    )
+  );
+  const expectedKeys = new Set(expected.map((e) => `${e.date}|${e.slot}`));
   let remaining = 0;
-  for (const d of expected) {
-    const key = format(d, 'yyyy-MM-dd');
-    if (key >= today && !decidedDates.has(key)) remaining += 1;
+  for (const e of expected) {
+    if (e.date >= today && !decidedKeys.has(`${e.date}|${e.slot}`)) remaining += 1;
   }
   // Ad-hoc planned classes in the future that aren't already on the recurring
   // schedule also count as classes still to come.
@@ -101,7 +108,7 @@ export function computeTermProjection(
     if (
       s.status === 'planned' &&
       s.scheduled_date >= today &&
-      !expectedKeys.has(s.scheduled_date)
+      !expectedKeys.has(`${s.scheduled_date}|${slotOf(s)}`)
     ) {
       remaining += 1;
     }
@@ -149,6 +156,35 @@ export function isDayOff(course: Course, dateKey: string): boolean {
 }
 
 /**
+ * How many classes this course holds on a particular date: none when the date
+ * isn't one of its days or has been taken off, otherwise however many that
+ * weekday holds. A day off takes the whole day, both halves of a double.
+ */
+export function classesOnDate(course: Course, dateKey: string): number {
+  if (isDayOff(course, dateKey)) return 0;
+  const day = new Date(`${dateKey}T00:00:00`).getDay() as ScheduleDay;
+  return classesOnWeekday(course, day);
+}
+
+/** One class of one day: the date it falls on and its place within that day. */
+export interface ExpectedClass {
+  date: string; // 'YYYY-MM-DD'
+  slot: number; // 1-based
+  total: number; // classes that day, so a slot can be named "2nd of 2"
+}
+
+/** Expand a list of class dates into the individual classes they hold. */
+export function expandToClasses(course: Course, dates: Date[]): ExpectedClass[] {
+  const out: ExpectedClass[] = [];
+  for (const d of dates) {
+    const date = format(d, 'yyyy-MM-dd');
+    const total = classesOnWeekday(course, d.getDay() as ScheduleDay);
+    for (let slot = 1; slot <= total; slot++) out.push({ date, slot, total });
+  }
+  return out;
+}
+
+/**
  * Generate expected session dates for a course between two dates, based on its
  * schedule_days array and minus its days off. Returns [] for an invalid range.
  */
@@ -183,15 +219,16 @@ export function generateExpectedDates(
 }
 
 /**
- * Count the classes a schedule actually produces between two dates. Used by the
- * class form to show the effect of days off while they're being picked, before
- * anything is saved.
+ * Count the classes a schedule actually produces between two dates, counting a
+ * day that meets twice as two. Used by the class form to show the effect of days
+ * off and double days while they're being picked, before anything is saved.
  */
 export function countClassDays(
   scheduleDays: ScheduleDay[],
   startKey: string,
   endKey: string,
-  excluded: string[]
+  excluded: string[],
+  perDay: ClassesPerDay = {}
 ): number {
   if (!startKey || !endKey || endKey < startKey || scheduleDays.length === 0) {
     return 0;
@@ -202,8 +239,9 @@ export function countClassDays(
   let count = 0;
   while (current <= end) {
     const key = format(current, 'yyyy-MM-dd');
-    if (scheduleDays.includes(current.getDay() as ScheduleDay) && !off.has(key)) {
-      count += 1;
+    const day = current.getDay() as ScheduleDay;
+    if (scheduleDays.includes(day) && !off.has(key)) {
+      count += normalizeCount(perDay[day] ?? 1);
     }
     current.setDate(current.getDate() + 1);
   }
@@ -215,6 +253,14 @@ export function countClassDays(
  * start/end dates when those are set. Keeps schedule expansion bounded — vital
  * for standalone classes that may have no end date of their own.
  */
+export function expectedClassesInRange(
+  course: Course,
+  windowStart: Date,
+  windowEnd: Date
+): ExpectedClass[] {
+  return expandToClasses(course, expectedDatesInRange(course, windowStart, windowEnd));
+}
+
 export function expectedDatesInRange(
   course: Course,
   windowStart: Date,

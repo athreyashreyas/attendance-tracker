@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { Check, X, ChevronLeft } from 'lucide-react';
 import { useSessionMutations } from '../hooks/useSessions';
-import { useTodayMarking } from '../hooks/useTodayMarking';
+import { useTodayMarking, type TodayClass } from '../hooks/useTodayMarking';
 import { todayKey, formatSessionDate } from '../utils/dates';
 import { hexToRgba } from '../lib/colors';
+import { ordinal } from '../lib/slots';
 import { spring } from '../lib/motion';
-import type { Course, SessionStatus } from '../types';
+import type { SessionStatus } from '../types';
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 280 : -280, opacity: 0 }),
@@ -33,7 +34,7 @@ export function QuickMarkPage() {
   useEffect(() => {
     if (initialized.current || isLoading) return;
     initialized.current = true;
-    const firstUnmarked = scheduled.findIndex((c) => !markedToday.has(c.id));
+    const firstUnmarked = scheduled.findIndex((c) => !markedToday.has(c.key));
     setIndex(firstUnmarked === -1 ? scheduled.length : firstUnmarked);
   }, [isLoading, scheduled, markedToday]);
 
@@ -52,8 +53,8 @@ export function QuickMarkPage() {
     setIndex((i) => Math.min(Math.max(i + dir, 0), scheduled.length - 1));
   }
 
-  async function mark(course: Course, status: SessionStatus) {
-    await markSession(course.id, today, status);
+  async function mark(item: TodayClass, status: SessionStatus) {
+    await markSession(item.course.id, today, status, item.slot);
     setDirection(1);
     setIndex((i) => {
       const next = i + 1;
@@ -109,8 +110,9 @@ export function QuickMarkPage() {
     );
   }
 
-  const course = scheduled[index];
-  const current = markedToday.get(course.id);
+  const item = scheduled[index];
+  const course = item.course;
+  const current = markedToday.get(item.key);
 
   return (
     <div className="relative flex min-h-[80vh] flex-col">
@@ -132,7 +134,7 @@ export function QuickMarkPage() {
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         <AnimatePresence custom={direction} mode="wait">
           <motion.div
-            key={course.id}
+            key={item.key}
             custom={direction}
             variants={slideVariants}
             initial="enter"
@@ -156,6 +158,12 @@ export function QuickMarkPage() {
               {course.name}
             </h2>
 
+            {item.total > 1 && (
+              <p className="mt-1.5 font-sans text-sm text-ink-500">
+                {ordinal(item.slot)} of {item.total} today
+              </p>
+            )}
+
             {current && (
               <p className="mt-3 font-sans text-sm text-ink-500">
                 Marked <span className="font-semibold">{current.status}</span>. Tap to
@@ -169,20 +177,20 @@ export function QuickMarkPage() {
                 icon={<Check size={36} strokeWidth={2.5} />}
                 className="bg-sage-500 text-white"
                 active={current?.status === 'present'}
-                onClick={() => mark(course, 'present')}
+                onClick={() => mark(item, 'present')}
               />
               <MarkButton
                 label="Absent"
                 icon={<X size={36} strokeWidth={2.5} />}
                 className="bg-rose-500 text-white"
                 active={current?.status === 'absent'}
-                onClick={() => mark(course, 'absent')}
+                onClick={() => mark(item, 'absent')}
               />
             </div>
 
             <button
               type="button"
-              onClick={() => mark(course, 'cancelled')}
+              onClick={() => mark(item, 'cancelled')}
               className="mt-4 font-sans text-sm font-medium text-ink-500"
             >
               Class cancelled
@@ -194,10 +202,10 @@ export function QuickMarkPage() {
       {/* Progress dots */}
       <div className="flex justify-center gap-2 pt-4">
         {scheduled.map((c, i) => {
-          const isMarked = markedToday.has(c.id);
+          const isMarked = markedToday.has(c.key);
           return (
             <span
-              key={c.id}
+              key={c.key}
               className={`h-2 rounded-full transition-all ${
                 i === index
                   ? 'w-6 bg-sage-500'

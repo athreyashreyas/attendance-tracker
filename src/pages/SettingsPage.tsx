@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addDays } from 'date-fns';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   LogOut,
   Plus,
   Download,
   FileText,
   Trash2,
-  ChevronDown,
   ChevronRight,
   Archive,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -29,7 +29,7 @@ import { useCourseView } from '../hooks/useCourseView';
 import { isArchivedRecord } from '../lib/archive';
 import { db } from '../lib/db';
 import { exportAllDataAsJSON, exportCourseAsCSV } from '../lib/export';
-import { APP_VERSION, CHANGELOG, type Release } from '../lib/changelog';
+import { APP_VERSION, CHANGELOG } from '../lib/changelog';
 import { formatLongDate, toDateKey } from '../utils/dates';
 import type { Semester } from '../types';
 
@@ -40,6 +40,7 @@ export function SettingsPage() {
   const { data: courses } = useAllCourses();
   const { deleteSemester, setSemesterArchived } = useSemesterMutations();
   const { archivedCourses, archivedSemesters } = useCourseView();
+  const latest = CHANGELOG[0];
 
   // Only live semesters are managed here; archived ones live in the archive.
   const semesters = (allSemesters ?? []).filter((s) => !isArchivedRecord(s));
@@ -232,23 +233,44 @@ export function SettingsPage() {
         </p>
       </Section>
 
-      {/* What's new */}
-      <Section title="What's new">
+      {/* Guide and what's new */}
+      <Section title="Guide">
         <p className="mb-3 font-sans text-xs text-ink-500">
-          Releases marked{' '}
-          <span className="rounded-full bg-sage-100 px-1.5 py-0.5 text-[10px] font-semibold text-sage-700">
-            Major
-          </span>{' '}
-          add new features worth a look. The rest are fixes and small touches.
+          How Attend works, start to finish, and what changed in each version.
         </p>
         <div className="space-y-2">
-          {CHANGELOG.map((release, i) => (
-            <ReleaseRow
-              key={release.version}
-              release={release}
-              defaultOpen={i === 0}
-            />
-          ))}
+          <button
+            type="button"
+            onClick={() => navigate('/guide?pane=guide')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <BookOpen size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                How Attend works
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                The whole app, walked through
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/guide?pane=new')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <Sparkles size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                What&apos;s new
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                {latest.version} · {latest.title}
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
         </div>
       </Section>
 
@@ -291,98 +313,6 @@ function Section({
       </div>
       <div className="rounded-card bg-parchment-50 p-4 shadow-sm">{children}</div>
     </section>
-  );
-}
-
-function ReleaseRow({
-  release,
-  defaultOpen,
-}: {
-  release: Release;
-  defaultOpen: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const [showAllNotes, setShowAllNotes] = useState(false);
-
-  // Keep long release lists tidy: show a handful and let the rest expand.
-  const MAX_VISIBLE_NOTES = 4;
-  const condensed = release.notes.length > MAX_VISIBLE_NOTES;
-  const visibleNotes =
-    condensed && !showAllNotes
-      ? release.notes.slice(0, MAX_VISIBLE_NOTES)
-      : release.notes;
-  const hiddenCount = release.notes.length - MAX_VISIBLE_NOTES;
-
-  return (
-    <div
-      className={`overflow-hidden rounded-card ${
-        release.major ? 'bg-sage-50 ring-1 ring-sage-100' : 'bg-parchment-100'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 p-3.5 text-left"
-      >
-        <span className="shrink-0 rounded-full bg-sage-100 px-2 py-0.5 font-sans text-[11px] font-semibold text-sage-700">
-          {release.version}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block break-words font-sans text-sm font-medium text-ink-900">
-            {release.title}
-          </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-2">
-            <span className="font-sans text-xs text-ink-500">
-              {formatLongDate(release.date)}
-            </span>
-            {release.major && (
-              <span className="rounded-full bg-sage-500 px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide text-white">
-                Major
-              </span>
-            )}
-          </span>
-        </span>
-        <motion.span
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="shrink-0 text-ink-300"
-        >
-          <ChevronDown size={18} />
-        </motion.span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="px-3.5 pb-3.5"
-          >
-            <ul className="space-y-2">
-              {visibleNotes.map((note, i) => (
-                <li
-                  key={i}
-                  className="flex gap-2 font-sans text-sm leading-relaxed text-ink-700"
-                >
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sage-400" />
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
-            {condensed && (
-              <button
-                type="button"
-                onClick={() => setShowAllNotes((s) => !s)}
-                className="mt-2.5 font-sans text-xs font-medium text-sage-600"
-              >
-                {showAllNotes ? 'Show less' : `Show ${hiddenCount} more`}
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   );
 }
 

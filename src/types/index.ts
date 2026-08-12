@@ -2,6 +2,9 @@
 // scheduled class to come, and is excluded from attendance totals until decided.
 export type SessionStatus = 'present' | 'absent' | 'cancelled' | 'planned';
 export type ScheduleDay = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
+// How many classes a weekday holds, for the days that hold more than one (a
+// double lecture, a lab that runs two periods). Days left out hold exactly one.
+export type ClassesPerDay = Partial<Record<ScheduleDay, number>>;
 export type TableName = 'semesters' | 'courses' | 'sessions';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -26,6 +29,9 @@ export interface Course {
   name: string;
   color: string; // hex color
   schedule_days: ScheduleDay[];
+  // Only the days that meet more than once appear here, so a class with one
+  // lecture a day carries an empty object, exactly as it always did.
+  sessions_per_day: ClassesPerDay;
   min_attendance_pct: number;
   start_date: string | null; // 'YYYY-MM-DD'; null falls back to the semester
   end_date: string | null;
@@ -45,6 +51,9 @@ export interface Session {
   course_id: string;
   user_id: string;
   scheduled_date: string; // 'YYYY-MM-DD'
+  // Which class of that day this is, counting from 1. A day with a single
+  // class only ever has slot 1; a double lecture has slots 1 and 2.
+  slot: number;
   status: SessionStatus;
   notes: string | null;
   created_at: string;

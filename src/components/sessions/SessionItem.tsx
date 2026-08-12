@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { formatSessionDate } from '../../utils/dates';
 import { STATUS_LABEL } from '../../lib/status';
+import { ordinal, slotOf } from '../../lib/slots';
 import { listItem } from '../../lib/motion';
 import type { Session, SessionStatus } from '../../types';
 
@@ -17,6 +18,9 @@ const STATUS_CLASS: Record<SessionStatus, string> = {
 };
 
 export function SessionItem({ session, onEdit }: SessionItemProps) {
+  // Days that hold more than one class list them separately, so each says
+  // which one it is rather than repeating the date twice over.
+  const slot = slotOf(session);
 
   return (
     <motion.button
@@ -29,6 +33,12 @@ export function SessionItem({ session, onEdit }: SessionItemProps) {
       <div className="min-w-0 flex-1">
         <p className="font-sans text-sm font-medium text-ink-900">
           {formatSessionDate(session.scheduled_date)}
+          {slot > 1 && (
+            <span className="font-normal text-ink-300">
+              {' '}
+              · {ordinal(slot)} class
+            </span>
+          )}
         </p>
         {session.notes && (
           <p className="truncate font-sans text-xs text-ink-500">

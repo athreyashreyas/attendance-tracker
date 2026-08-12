@@ -4,7 +4,8 @@ import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { toRemote } from '../utils/records';
 import { nowIso } from '../utils/dates';
-import type { Course, ScheduleDay } from '../types';
+import { normalizeCount } from '../lib/slots';
+import type { ClassesPerDay, Course, ScheduleDay } from '../types';
 
 async function loadAllCourses(): Promise<Course[]> {
   const courses = await db.courses.filter((c) => !c.deleted_at).toArray();
@@ -34,10 +35,28 @@ export interface CourseInput {
   name: string;
   color: string;
   schedule_days: ScheduleDay[];
+  sessions_per_day?: ClassesPerDay;
   min_attendance_pct: number;
   start_date?: string | null;
   end_date?: string | null;
   excluded_dates?: string[];
+}
+
+/**
+ * Keep only the days that genuinely meet more than once, and only days the
+ * class actually runs on. A day dropped from the schedule shouldn't leave a
+ * count behind to surprise anyone who adds it back later.
+ */
+function tidyPerDay(
+  perDay: ClassesPerDay | undefined,
+  scheduleDays: ScheduleDay[]
+): ClassesPerDay {
+  const out: ClassesPerDay = {};
+  for (const day of scheduleDays) {
+    const count = normalizeCount(perDay?.[day] ?? 1);
+    if (count > 1) out[day] = count;
+  }
+  return out;
 }
 
 export function useCourseMutations() {
@@ -60,6 +79,7 @@ export function useCourseMutations() {
       name: input.name.trim(),
       color: input.color,
       schedule_days: input.schedule_days,
+      sessions_per_day: tidyPerDay(input.sessions_per_day, input.schedule_days),
       min_attendance_pct: input.min_attendance_pct,
       start_date: input.start_date ?? null,
       end_date: input.end_date ?? null,

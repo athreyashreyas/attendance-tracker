@@ -7,8 +7,10 @@ import { DateInput } from '../ui/DateInput';
 import {
   useSessionMutations,
   findSessionForDate,
+  nextSlotForDate,
 } from '../../hooks/useSessions';
 import { STATUS_OPTIONS } from '../../lib/status';
+import { ordinal, slotOf } from '../../lib/slots';
 import { todayKey } from '../../utils/dates';
 import type { Session, SessionStatus } from '../../types';
 
@@ -18,6 +20,12 @@ interface SessionFormProps {
   courseId: string;
   session?: Session | null;
   defaultDate?: string;
+  /**
+   * Which class of the day this records. Given when a particular one was tapped
+   * (the second lecture of a double, say). Left out, a new class goes after
+   * whatever the day already holds.
+   */
+  slot?: number;
   /** Status a brand-new session starts on (default 'present'). */
   defaultStatus?: SessionStatus;
 }
@@ -30,6 +38,7 @@ export function SessionForm({
   courseId,
   session,
   defaultDate,
+  slot,
   defaultStatus = 'present',
 }: SessionFormProps) {
   const { saveSession, deleteSession } = useSessionMutations();
@@ -40,6 +49,8 @@ export function SessionForm({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Which class of the day a new one will be, so it can be said out loud. */
+  const [newSlot, setNewSlot] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -49,19 +60,57 @@ export function SessionForm({
     setConfirmDelete(false);
   }, [open, session, defaultDate, defaultStatus]);
 
+  // A day can hold more than one class, so adding one to a day that already has
+  // some says where it lands rather than quietly replacing what's there.
+  useEffect(() => {
+    if (!open || session || !date) {
+      setNewSlot(null);
+      return;
+    }
+    let live = true;
+    void (async () => {
+      const taken = slot
+        ? await findSessionForDate(courseId, date, slot)
+        : undefined;
+      const next =
+        slot && !taken ? slot : await nextSlotForDate(courseId, date);
+      if (live) setNewSlot(next);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [open, session, courseId, date, slot]);
+
   async function handleSave() {
     setSaving(true);
     try {
-      // Conflict guard: if a session already exists for this date, edit it.
+      // Editing keeps the class it is, unless it's being moved to a day whose
+      // matching class is taken, in which case it joins the end of that day. A
+      // new one takes the class it was opened for, or goes on the end.
       let id = session?.id;
-      if (!id) {
-        const existing = await findSessionForDate(courseId, date);
+      let saveSlot: number;
+      if (session) {
+        saveSlot = slotOf(session);
+        if (
+          date !== session.scheduled_date &&
+          (await findSessionForDate(courseId, date, saveSlot))
+        ) {
+          saveSlot = await nextSlotForDate(courseId, date);
+        }
+      } else if (slot) {
+        // The class that was tapped: record it, or edit it if it's since been
+        // recorded elsewhere.
+        const existing = await findSessionForDate(courseId, date, slot);
         if (existing) id = existing.id;
+        saveSlot = slot;
+      } else {
+        saveSlot = await nextSlotForDate(courseId, date);
       }
       await saveSession({
         id,
         course_id: courseId,
         scheduled_date: date,
+        slot: saveSlot,
         status,
         notes,
       });
@@ -94,6 +143,17 @@ export function SessionForm({
             Date
           </label>
           <DateInput value={date} onChange={(e) => setDate(e.target.value)} />
+          {newSlot !== null && newSlot > 1 && (
+            <p className="mt-1.5 font-sans text-xs text-ink-300">
+              This will be the {ordinal(newSlot)} class of that day. The others
+              keep their own marks.
+            </p>
+          )}
+          {session && slotOf(session) > 1 && (
+            <p className="mt-1.5 font-sans text-xs text-ink-300">
+              The {ordinal(slotOf(session))} class of that day.
+            </p>
+          )}
         </div>
 
         <div>

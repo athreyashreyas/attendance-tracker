@@ -8,15 +8,41 @@ import {
 } from '../../utils/dates';
 import { hexToRgba, readableTextColor, ABSENT_COLOR } from '../../lib/colors';
 import { STATUS_LABEL } from '../../lib/status';
-import { daysOff } from '../../lib/calculations';
-import type { Course, Session, ScheduleDay } from '../../types';
+import { classesOnDate, daysOff } from '../../lib/calculations';
+import { slotOf } from '../../lib/slots';
+import type { Course, Session, SessionStatus } from '../../types';
 
 interface AttendanceHeatmapProps {
   course: Course;
   semesterStart: string;
   semesterEnd: string;
   sessions: Session[];
-  onSelectDate: (dateKey: string, session: Session | undefined) => void;
+  /** Every class recorded on the tapped day, in order. */
+  onSelectDate: (dateKey: string, sessions: Session[]) => void;
+}
+
+/** How one class of a day is painted: its fill and the ink that reads on it. */
+interface Band {
+  background: string;
+  text: string;
+  cancelled: boolean;
+}
+
+const CANCELLED_FILL = '#E0DCD2';
+const MUTED_INK = '#6B6960';
+
+/**
+ * A day that holds two classes is painted in two: half attended, half missed
+ * reads as exactly that. Days with a single class keep a plain flat fill.
+ */
+function bandsBackground(bands: Band[]): string {
+  if (bands.length === 1) return bands[0].background;
+  const step = 100 / bands.length;
+  const stops = bands.flatMap((b, i) => [
+    `${b.background} ${i * step}%`,
+    `${b.background} ${(i + 1) * step}%`,
+  ]);
+  return `linear-gradient(90deg, ${stops.join(', ')})`;
 }
 
 export function AttendanceHeatmap({
@@ -27,8 +53,13 @@ export function AttendanceHeatmap({
   onSelectDate,
 }: AttendanceHeatmapProps) {
   const sessionsByDate = useMemo(() => {
-    const map = new Map<string, Session>();
-    for (const s of sessions) map.set(s.scheduled_date, s);
+    const map = new Map<string, Session[]>();
+    for (const s of sessions) {
+      const list = map.get(s.scheduled_date) ?? [];
+      list.push(s);
+      map.set(s.scheduled_date, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => slotOf(a) - slotOf(b));
     return map;
   }, [sessions]);
 
@@ -85,33 +116,67 @@ export function AttendanceHeatmap({
                 {week.map((day) => {
                   const key = toDateKey(day);
                   const inRange = key >= rangeStart && key <= rangeEnd;
-                  const session = sessionsByDate.get(key);
+                  const daySessions = sessionsByDate.get(key) ?? [];
                   const dayOff = off.has(key);
-                  const scheduled =
-                    course.schedule_days.includes(day.getDay() as ScheduleDay) &&
-                    !dayOff;
+                  // How many classes the day holds: what the schedule says, or
+                  // more when extra ones have been added by hand.
+                  const scheduledCount = classesOnDate(course, key);
+                  const total = Math.max(
+                    scheduledCount,
+                    daySessions.reduce((m, s) => Math.max(m, slotOf(s)), 0)
+                  );
+
+                  // One band per class of the day, in order.
+                  const bands: Band[] = [];
+                  const statuses: (SessionStatus | 'unmarked')[] = [];
+                  for (let slot = 1; slot <= total; slot++) {
+                    const session = daySessions.find((s) => slotOf(s) === slot);
+                    statuses.push(session?.status ?? 'unmarked');
+                    if (session?.status === 'present') {
+                      bands.push({
+                        background: course.color,
+                        text: readableTextColor(course.color),
+                        cancelled: false,
+                      });
+                    } else if (session?.status === 'absent') {
+                      bands.push({
+                        background: ABSENT_COLOR,
+                        text: readableTextColor(ABSENT_COLOR),
+                        cancelled: false,
+                      });
+                    } else if (session?.status === 'cancelled') {
+                      bands.push({
+                        background: CANCELLED_FILL,
+                        text: MUTED_INK,
+                        cancelled: true,
+                      });
+                    } else {
+                      bands.push({
+                        background: hexToRgba(course.color, 0.12),
+                        text: MUTED_INK,
+                        cancelled: false,
+                      });
+                    }
+                  }
 
                   let background: string;
                   let color: string;
-                  let struck = false;
                   let ring: string | undefined;
+                  const struck =
+                    bands.length > 0 && bands.every((b) => b.cancelled);
 
                   if (!inRange) {
                     background = 'transparent';
                     color = 'transparent';
-                  } else if (session?.status === 'present') {
-                    background = course.color;
-                    color = readableTextColor(course.color);
-                  } else if (session?.status === 'absent') {
-                    background = ABSENT_COLOR;
-                    color = readableTextColor(ABSENT_COLOR);
-                  } else if (session?.status === 'cancelled') {
-                    background = '#E0DCD2';
-                    color = '#6B6960';
-                    struck = true;
-                  } else if (session?.status === 'planned' || scheduled) {
-                    background = hexToRgba(course.color, 0.12);
-                    color = '#6B6960';
+                  } else if (bands.length > 0) {
+                    background = bandsBackground(bands);
+                    // White ink only when it reads on every band; a day split
+                    // between a dark fill and a pale one takes the dark ink.
+                    color = bands.every((b) => b.text === '#FFFFFF')
+                      ? '#FFFFFF'
+                      : bands.length > 1
+                        ? '#1A1A18'
+                        : bands[0].text;
                   } else if (dayOff) {
                     // A day the class was taken off: hollow where a class would
                     // otherwise have been filled in.
@@ -123,14 +188,14 @@ export function AttendanceHeatmap({
                     color = '#9B9890';
                   }
 
-                  const interactive =
-                    inRange && (session !== undefined || scheduled || dayOff);
-                  const status = session
-                    ? STATUS_LABEL[session.status]
-                    : dayOff
-                      ? 'No class'
-                      : scheduled
-                        ? 'Not marked'
+                  const interactive = inRange && (total > 0 || dayOff);
+                  const status =
+                    total > 0
+                      ? statuses
+                          .map((s) => (s === 'unmarked' ? 'Not marked' : STATUS_LABEL[s]))
+                          .join(', ')
+                      : dayOff
+                        ? 'No class'
                         : null;
                   const description = inRange
                     ? `${formatSessionDate(key)}${status ? `: ${status}` : ''}`
@@ -141,10 +206,10 @@ export function AttendanceHeatmap({
                       key={key}
                       type="button"
                       disabled={!interactive}
-                      onClick={() => onSelectDate(key, session)}
+                      onClick={() => onSelectDate(key, daySessions)}
                       title={description}
                       aria-label={description}
-                      style={{ backgroundColor: background, color, boxShadow: ring }}
+                      style={{ background, color, boxShadow: ring }}
                       className={`flex aspect-square items-center justify-center rounded-[4px] font-sans text-[11px] leading-none tabular-nums ${
                         struck ? 'line-through' : ''
                       } ${interactive ? '' : 'cursor-default'}`}

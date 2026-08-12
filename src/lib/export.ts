@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { db } from './db';
 import { fromDateKey, todayKey } from '../utils/dates';
 import { toRemote } from '../utils/records';
+import { slotOf } from './slots';
 import type { Semester, Course, Session } from '../types';
 
 function triggerDownload(blob: Blob, filename: string): void {
@@ -61,14 +62,19 @@ export function exportCourseAsCSV(
 ): void {
   const sorted = [...sessions]
     .filter((s) => !s.deleted_at)
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+    .sort(
+      (a, b) =>
+        a.scheduled_date.localeCompare(b.scheduled_date) || slotOf(a) - slotOf(b)
+    );
 
-  const header = 'Date,Day,Status,Notes';
+  // A day can hold more than one class, so each row says which one it was.
+  const header = 'Date,Day,Class of day,Status,Notes';
   const rows = sorted.map((s) => {
     const day = format(fromDateKey(s.scheduled_date), 'EEEE');
     return [
       csvCell(s.scheduled_date),
       csvCell(day),
+      csvCell(String(slotOf(s))),
       csvCell(s.status),
       csvCell(s.notes ?? ''),
     ].join(',');

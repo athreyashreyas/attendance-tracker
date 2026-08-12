@@ -11,8 +11,9 @@ import { useCourseMutations } from '../../hooks/useCourses';
 import { db } from '../../lib/db';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
 import { countClassDays } from '../../lib/calculations';
-import { WEEK_ORDER, formatLongDate } from '../../utils/dates';
-import type { Course, ScheduleDay, Semester } from '../../types';
+import { MAX_CLASSES_PER_DAY, normalizeCount } from '../../lib/slots';
+import { WEEK_ORDER, DAY_LABELS, formatLongDate } from '../../utils/dates';
+import type { ClassesPerDay, Course, ScheduleDay, Semester } from '../../types';
 
 const DAY_SHORT: Record<number, string> = {
   0: 'Su',
@@ -25,6 +26,50 @@ const DAY_SHORT: Record<number, string> = {
 };
 
 const NO_SEMESTER = '';
+
+/** One weekday, with how many times the class meets on it. */
+function DayCountRow({
+  label,
+  count,
+  onChange,
+}: {
+  label: string;
+  count: number;
+  onChange: (count: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-parchment-50 px-3 py-2">
+      <span className="min-w-0 flex-1 truncate font-sans text-sm text-ink-900">
+        {label}
+      </span>
+      <div className="flex items-center gap-2.5">
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onChange(count - 1)}
+          disabled={count <= 1}
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-parchment-200 text-ink-700 disabled:opacity-30"
+          aria-label={`One fewer class on ${label}`}
+        >
+          <Minus size={14} />
+        </motion.button>
+        <span className="w-8 text-center font-sans text-sm tabular-nums text-ink-900">
+          {count}
+        </span>
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onChange(count + 1)}
+          disabled={count >= MAX_CLASSES_PER_DAY}
+          className="flex h-7 w-7 items-center justify-center rounded-md bg-parchment-200 text-ink-700 disabled:opacity-30"
+          aria-label={`One more class on ${label}`}
+        >
+          <Plus size={14} />
+        </motion.button>
+      </div>
+    </div>
+  );
+}
 
 interface CourseFormProps {
   open: boolean;
@@ -51,6 +96,8 @@ export function CourseForm({
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(DEFAULT_COURSE_COLOR);
   const [days, setDays] = useState<ScheduleDay[]>([]);
+  const [perDay, setPerDay] = useState<ClassesPerDay>({});
+  const [perDayOpen, setPerDayOpen] = useState(false);
   const [minPct, setMinPct] = useState(75);
   const [semesterId, setSemesterId] = useState<string>(NO_SEMESTER);
   const [start, setStart] = useState('');
@@ -72,6 +119,11 @@ export function CourseForm({
     setName(course?.name ?? '');
     setColor(course?.color ?? DEFAULT_COURSE_COLOR);
     setDays(course?.schedule_days ?? []);
+    setPerDay(course?.sessions_per_day ?? {});
+    // Opened for a class that already has a double day, so it's visible at once.
+    setPerDayOpen(
+      Object.values(course?.sessions_per_day ?? {}).some((n) => n > 1)
+    );
     setMinPct(course?.min_attendance_pct ?? 75);
     setSemesterId(course?.semester_id ?? defaultSemesterId ?? NO_SEMESTER);
     setStart(course?.start_date ?? '');
@@ -118,19 +170,37 @@ export function CourseForm({
   const windowEnd = end || selectedSemester?.end_date || '';
 
   const classCount = useMemo(
-    () => countClassDays(days, windowStart, windowEnd, excluded),
-    [days, windowStart, windowEnd, excluded]
+    () => countClassDays(days, windowStart, windowEnd, excluded, perDay),
+    [days, windowStart, windowEnd, excluded, perDay]
   );
-  // Only days off that land on a real class day inside the window count.
+  // Only days off that land on a real class day inside the window count, and a
+  // day off takes every class that day with it.
   const offCount = useMemo(
-    () => countClassDays(days, windowStart, windowEnd, []) - classCount,
-    [days, windowStart, windowEnd, classCount]
+    () =>
+      countClassDays(days, windowStart, windowEnd, [], perDay) - classCount,
+    [days, windowStart, windowEnd, perDay, classCount]
+  );
+
+  // Days that meet more than once, in the order they're shown.
+  const doubleDays = useMemo(
+    () => WEEK_ORDER.filter((d) => days.includes(d) && (perDay[d] ?? 1) > 1),
+    [days, perDay]
   );
 
   function toggleDay(day: ScheduleDay) {
     setDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
+  }
+
+  function setDayCount(day: ScheduleDay, count: number) {
+    setPerDay((prev) => {
+      const next = { ...prev };
+      const value = normalizeCount(count);
+      if (value > 1) next[day] = value;
+      else delete next[day];
+      return next;
+    });
   }
 
   /**
@@ -211,6 +281,7 @@ export function CourseForm({
         name,
         color,
         schedule_days: [...days].sort((a, b) => a - b),
+        sessions_per_day: perDay,
         min_attendance_pct: minPct,
         start_date: start || null,
         end_date: end || null,
@@ -291,10 +362,73 @@ export function CourseForm({
                   }`}
                 >
                   {DAY_SHORT[day]}
+                  {active && (perDay[day] ?? 1) > 1 && (
+                    <span className="ml-0.5 text-[11px] opacity-80">
+                      ×{perDay[day]}
+                    </span>
+                  )}
                 </motion.button>
               );
             })}
           </div>
+
+          {days.length > 0 && (
+            <div className="mt-2.5">
+              <button
+                type="button"
+                onClick={() => setPerDayOpen((v) => !v)}
+                aria-expanded={perDayOpen}
+                className="flex w-full items-baseline gap-1.5"
+              >
+                <p className="font-sans text-xs font-medium text-ink-500">
+                  More than one class a day
+                </p>
+                <span className="font-sans text-[11px] text-ink-300">
+                  {doubleDays.length > 0
+                    ? doubleDays
+                        .map((d) => `${DAY_LABELS[d]} ×${perDay[d]}`)
+                        .join(' · ')
+                    : 'Optional'}
+                </span>
+                <motion.span
+                  animate={{ rotate: perDayOpen ? 180 : 0 }}
+                  transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+                  className="ml-auto text-ink-300"
+                >
+                  <ChevronDown size={18} />
+                </motion.span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {perDayOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{
+                      height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] },
+                      opacity: { duration: 0.18, ease: 'easeOut' },
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 space-y-1.5 rounded-card bg-parchment-100 p-2.5">
+                      <p className="px-1 font-sans text-xs text-ink-500">
+                        A double lecture is two classes, each marked on its own.
+                      </p>
+                      {WEEK_ORDER.filter((d) => days.includes(d)).map((day) => (
+                        <DayCountRow
+                          key={day}
+                          label={DAY_LABELS[day]}
+                          count={perDay[day] ?? 1}
+                          onChange={(n) => setDayCount(day, n)}
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
 
         <div>
