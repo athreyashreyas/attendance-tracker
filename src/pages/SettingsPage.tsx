@@ -11,6 +11,8 @@ import {
   Archive,
   BookOpen,
   Sparkles,
+  Bug,
+  Lightbulb,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -18,6 +20,8 @@ import { Input } from '../components/ui/Input';
 import { BottomSheet } from '../components/ui/BottomSheet';
 import { DateInput } from '../components/ui/DateInput';
 import { Modal } from '../components/ui/Modal';
+import { FeedbackSheet } from '../components/settings/FeedbackSheet';
+import type { FeedbackKind } from '../lib/feedback';
 import { useAuth } from '../hooks/useAuth';
 import {
   useSemesters,
@@ -47,6 +51,7 @@ export function SettingsPage() {
 
   const [semesterForm, setSemesterForm] = useState<Semester | null | 'new'>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackKind | null>(null);
 
   async function handleSignOut() {
     await signOut();
@@ -273,6 +278,51 @@ export function SettingsPage() {
           </button>
         </div>
       </Section>
+
+      {/* Speaking to the creator */}
+      <Section title="Speak to the creator and let them know your thoughts">
+        <p className="mb-3 font-sans text-xs text-ink-500">
+          Attend is made by one person, and these go straight to them. Say what
+          broke or what you wish it did, in as few words as you like. Every
+          message is read.
+        </p>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setFeedback('bug')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <Bug size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                Report something broken
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                Your version and device come along on their own
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeedback('idea')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <Lightbulb size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                Suggest something
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                Half-formed ideas are welcome
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
+        </div>
+      </Section>
+
+      <FeedbackSheet kind={feedback} onClose={() => setFeedback(null)} />
 
       <SemesterFormSheet
         target={semesterForm}

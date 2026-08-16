@@ -1,15 +1,7 @@
 import { useMemo } from 'react';
 import {
-  eachDayOfInterval,
-  startOfMonth,
-  endOfMonth,
-  addMonths,
-  getDay,
-  format,
-} from 'date-fns';
-import {
   toDateKey,
-  fromDateKey,
+  monthGrids,
   formatSessionDate,
   DAY_LABELS_SHORT,
 } from '../../utils/dates';
@@ -73,24 +65,12 @@ export function AttendanceHeatmap({
     return map;
   }, [sessions]);
 
-  // Every month the term touches, each one its own grid. A month opens on its
-  // own 1st under the right weekday, so no row ever carries two months at once.
-  const months = useMemo(() => {
-    const first = startOfMonth(fromDateKey(semesterStart));
-    const last = startOfMonth(fromDateKey(semesterEnd));
-    const out: { label: string; lead: number; days: Date[] }[] = [];
-    for (let m = first; m <= last; m = addMonths(m, 1)) {
-      out.push({
-        label: format(m, 'MMMM yyyy'),
-        lead: getDay(m), // blanks before the 1st, so it lands on its weekday
-        days: eachDayOfInterval({ start: m, end: endOfMonth(m) }),
-      });
-    }
-    return out;
-  }, [semesterStart, semesterEnd]);
-
-  const rangeStart = semesterStart;
-  const rangeEnd = semesterEnd;
+  // One grid per month, holding only the days the term covers, so a term that
+  // starts on the 8th or ends mid-month leaves no empty week in the grid.
+  const months = useMemo(
+    () => monthGrids(semesterStart, semesterEnd),
+    [semesterStart, semesterEnd]
+  );
 
   const off = useMemo(() => new Set(daysOff(course)), [course]);
 
@@ -120,7 +100,6 @@ export function AttendanceHeatmap({
                 ))}
                 {days.map((day) => {
                   const key = toDateKey(day);
-                  const inRange = key >= rangeStart && key <= rangeEnd;
                   const dayOff = off.has(key);
                   // The day's shape is the app's one answer to what a day
                   // holds, so the grid reads it rather than working it out.
@@ -166,10 +145,7 @@ export function AttendanceHeatmap({
                   const struck =
                     bands.length > 0 && bands.every((b) => b.cancelled);
 
-                  if (!inRange) {
-                    background = 'transparent';
-                    color = 'transparent';
-                  } else if (bands.length > 0) {
+                  if (bands.length > 0) {
                     background = bandsBackground(bands);
                     // White ink only when it reads on every band; a day split
                     // between a dark fill and a pale one takes the dark ink.
@@ -189,7 +165,7 @@ export function AttendanceHeatmap({
                     color = '#9B9890';
                   }
 
-                  const interactive = inRange && (classes.length > 0 || dayOff);
+                  const interactive = classes.length > 0 || dayOff;
                   const status =
                     classes.length > 0
                       ? classes
@@ -200,9 +176,9 @@ export function AttendanceHeatmap({
                       : dayOff
                         ? 'No class'
                         : null;
-                  const description = inRange
-                    ? `${formatSessionDate(key)}${status ? `: ${status}` : ''}`
-                    : formatSessionDate(key);
+                  const description = `${formatSessionDate(key)}${
+                    status ? `: ${status}` : ''
+                  }`;
 
                   return (
                     <button
@@ -217,7 +193,7 @@ export function AttendanceHeatmap({
                         struck ? 'line-through' : ''
                       } ${interactive ? '' : 'cursor-default'}`}
                     >
-                      {inRange ? day.getDate() : ''}
+                      {day.getDate()}
                     </button>
                   );
                 })}

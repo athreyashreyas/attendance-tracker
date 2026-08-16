@@ -7,6 +7,7 @@ import { queryClient } from './lib/queryClient';
 import { router } from './router';
 import { initAuth, useAuthStore } from './stores/authStore';
 import { syncEngine } from './lib/sync';
+import { startFeedbackOutbox } from './lib/feedbackOutbox';
 import { useRealtime } from './hooks/useRealtime';
 import { useViewport } from './hooks/useViewport';
 import { QuotaToast } from './components/ui/QuotaToast';
@@ -21,6 +22,13 @@ function AppInner() {
     initAuth();
     syncEngine.attachNetworkListeners();
   }, []);
+
+  // A message written offline goes out on the next connection, whether or not
+  // anybody opens Settings again.
+  useEffect(() => {
+    if (!userId) return;
+    return startFeedbackOutbox();
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;

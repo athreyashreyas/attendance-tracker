@@ -31,6 +31,22 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.9.0',
+    date: '2026-08-16',
+    major: true,
+    title: 'A way to make attend exactly what you want',
+    notes: [
+      'If Attend has ever been any good, it is because of the thoughtful voices and consideration of everyone who has used it. As Attend grows, we want that ethos of bespoke attention to remain. Settings now has a line straight to the app\'s creator.',
+      'You can report a bug, suggest a new feature, or just send an idea. Bugs are fixed as soon as possible, and ideas are read and considered for the next version. Every single message is deeply valued and given attention to.',
+      'If you are offline or the message cannot get through, nothing is lost. Attend syncs the message and sends it when you are back online, so you can write it and forget it.',
+      'Replies come back to the email you signed up with, so there is nothing to go and check and nothing to miss. Answer that mail and the conversation simply carries on.',
+      'The overview grid on a class page also reads properly now. Each month begins on its own 1st instead of running into the one before it, and a term that starts on the 8th or ends mid-month no longer leaves a blank week sitting in the grid.',
+    ],
+    howTo: [
+      'Open Settings and scroll to "Speak to the creator and let them know your thoughts", then choose whether it is a bug or an idea.',
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-08-12',
     major: true,

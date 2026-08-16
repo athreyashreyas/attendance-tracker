@@ -106,6 +106,21 @@ export interface SyncQueueItem {
   retry_count: number;
 }
 
+/**
+ * A message written in Settings that has not reached the creator yet. It waits
+ * on the device, exactly like an unsent change waits in the sync queue, and
+ * goes out on its own once there is a connection again.
+ */
+export interface FeedbackOutboxItem {
+  id?: number;
+  kind: 'bug' | 'idea';
+  subject: string;
+  body: string;
+  created_at: string;
+  /** Failed attempts so far, so a message that cannot land is given up on. */
+  attempts: number;
+}
+
 // Dexie local types (same as above, with extra sync fields)
 export interface LocalRecord {
   synced_at: string | null;
