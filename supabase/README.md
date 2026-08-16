@@ -1,11 +1,40 @@
 # Database
 
-`schema.sql` is the original schema. Everything since is a numbered migration
+`schema.sql` is the base schema. Everything since is a numbered migration
 applied on top of it, in order. A fresh project needs `schema.sql` and then
 every `migration-*.sql` in sequence. There is no migration 003; the gap is
 harmless.
 
 `functions/` holds edge functions, each with its own README.
+
+## What has been applied
+
+`public.schema_migrations` is the answer, rather than git history:
+
+```sql
+select version, applied_at, note from public.schema_migrations order by version;
+```
+
+**Every new migration must end by inserting its own row there.** Before 010
+nothing recorded what had run, and rebuilding the database meant reading
+commits and hoping.
+
+`schema.sql` is kept in step with production rather than frozen at its original
+state, so reading it alone is never misleading. Migration 009 rewrote the audit
+trigger, and `schema.sql` carries that rewritten version; re-applying 009 over
+it is harmless, since it is a `create or replace`.
+
+## Checking on it
+
+```sql
+select * from public.infra_health();
+```
+
+Reports what is stored, how much of it is the app's own data, how many people
+have signed up against how many have actually marked a class, and whether the
+nightly prune ran. Worth a look when the dashboard's number moves, because the
+dashboard reports disk usage, which runs about twice `pg_database_size` and
+invites a fright that is not warranted.
 
 ## Keeping storage honest
 

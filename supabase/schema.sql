@@ -115,10 +115,10 @@ create trigger trg_updated_at_sessions
 -- AUDIT LOG TRIGGER
 -- ============================================================
 --
--- SUPERSEDED by migration-009-audit-retention.sql, which must be applied on
--- top of this file. The version below copies whole rows on every change, and
--- two of them on an update, which made the log 70% of everything stored. Do
--- not copy it into anything new; see supabase/README.md for the rule.
+-- This is the current definition, as rewritten by migration 009. It is kept in
+-- step here so that this file alone is never misleading. An INSERT stores no
+-- payload, an UPDATE stores only the fields that moved, and a DELETE keeps the
+-- whole row. See supabase/README.md for why.
 
 create or replace function public.create_audit_log()
 returns trigger language plpgsql security definer as $$
@@ -131,16 +131,42 @@ begin
   if TG_OP = 'DELETE' then
     _record_id := old.id;
     _user_id   := old.user_id;
+    -- About to vanish, so this is the only copy there will ever be.
     _old       := to_jsonb(old);
+
   elsif TG_OP = 'UPDATE' then
     _record_id := new.id;
     _user_id   := new.user_id;
-    _old       := to_jsonb(old);
-    _new       := to_jsonb(new);
+
+    -- Only the columns that actually moved. Storing the unchanged ones twice
+    -- was most of the weight, and none of the information.
+    _new := (
+      select jsonb_object_agg(n.key, n.value)
+      from jsonb_each(to_jsonb(new)) n
+      left join jsonb_each(to_jsonb(old)) o on o.key = n.key
+      where o.value is distinct from n.value
+    );
+    _old := (
+      select jsonb_object_agg(o.key, o.value)
+      from jsonb_each(to_jsonb(old)) o
+      left join jsonb_each(to_jsonb(new)) n on n.key = o.key
+      where n.value is distinct from o.value
+    );
+
+    -- updated_at moves on every single write and means nothing by itself.
+    _new := _new - 'updated_at';
+    _old := _old - 'updated_at';
+
+    -- A write that changed nothing of substance is not worth a row. The sync
+    -- engine replays writes, so this case is common rather than theoretical.
+    if _new is null or _new = '{}'::jsonb then
+      return new;
+    end if;
+
   else
     _record_id := new.id;
     _user_id   := new.user_id;
-    _new       := to_jsonb(new);
+    -- No copy on purpose: the inserted row is in the table, one join away.
   end if;
 
   insert into public.attendance_audit_log
