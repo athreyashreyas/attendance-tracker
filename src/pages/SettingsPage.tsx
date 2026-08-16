@@ -298,7 +298,7 @@ export function SettingsPage() {
                 Report something broken
               </p>
               <p className="font-sans text-xs text-ink-500">
-                Your version and device come along on their own
+                Found a bug, or something that does not work as you expect? Let us know so we can fix it.
               </p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-ink-300" />
@@ -314,7 +314,7 @@ export function SettingsPage() {
                 Suggest something
               </p>
               <p className="font-sans text-xs text-ink-500">
-                Half-formed ideas are welcome
+                Any and all ideas are welcome. Especially half-formed ones.
               </p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-ink-300" />

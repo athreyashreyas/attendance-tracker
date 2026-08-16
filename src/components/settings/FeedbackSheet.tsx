@@ -105,9 +105,8 @@ export function FeedbackSheet({ kind, onClose }: FeedbackSheetProps) {
           </div>
 
           <p className="font-sans text-xs text-ink-500">
-            Your version and device come along on their own, so there is nothing
-            technical for you to work out.
-            {account ? ` Any reply comes to ${account}.` : ''}
+            Your message will be personally attended to and version updates based on your feedback will auto sync on all the devices you use Attend on.
+            {account ? ` Any reply from the creator will come directly to ${account}.` : ''}
           </p>
 
           {/* A line is always held here, so an error arriving never shoves the

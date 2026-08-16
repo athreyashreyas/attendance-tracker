@@ -35,7 +35,7 @@ export const FEEDBACK_KINDS: Record<FeedbackKind, KindCopy> = {
     label: 'Something is broken',
     subject: 'Bug report',
     prompt:
-      'What went wrong, and what were you doing just before it did? Rough and half-remembered is genuinely fine.',
+      'What went wrong, and what were you doing just before it did? The more detail you give, the easier it is to fix.',
     placeholder:
       'I marked the second class of a double as absent and the ring did not move...',
   },
