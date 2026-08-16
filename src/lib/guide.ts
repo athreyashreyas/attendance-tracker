@@ -16,7 +16,8 @@ export type GuideArtKind =
   | 'filters'
   | 'archive'
   | 'sync'
-  | 'export';
+  | 'export'
+  | 'message';
 
 export interface GuideSection {
   id: string;
@@ -176,5 +177,6 @@ export const GUIDE: GuideSection[] = [
       'Open Settings and scroll to "Make Attend Yours".',
       'Choose whether it is something broken or an idea, then write as much or as little as you like.',
     ],
+    art: 'message',
   },
 ];

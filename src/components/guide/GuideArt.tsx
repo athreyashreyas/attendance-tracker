@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+import { Check, X, Bug, Lightbulb } from 'lucide-react';
 import { ABSENT_COLOR } from '../../lib/colors';
 import type { GuideArtKind } from '../../lib/guide';
 
@@ -350,6 +350,47 @@ export function GuideArt({ kind }: { kind: GuideArtKind }) {
               <span className="font-sans text-xs text-ink-500">{label}</span>
             </span>
           ))}
+        </div>
+      );
+
+    // A message written in Settings, and where it gets to. The details along
+    // the bottom are the ones the app attaches for you.
+    case 'message':
+      return (
+        <div className="w-full max-w-[240px] space-y-2.5">
+          <div className="flex gap-1.5 rounded-lg bg-parchment-200 p-1">
+            <span className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-parchment-50 py-2 font-sans text-[11px] font-medium text-ink-900 shadow-sm">
+              <Bug size={12} />
+              Broken
+            </span>
+            <span className="flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 font-sans text-[11px] font-medium text-ink-500">
+              <Lightbulb size={12} />
+              An idea
+            </span>
+          </div>
+
+          <div className="rounded-card bg-parchment-50 p-3 shadow-sm">
+            <p className="font-sans text-xs leading-relaxed text-ink-700">
+              The ring did not move after I marked the second class of a double.
+            </p>
+            <p className="mt-2 font-sans text-[10px] text-ink-300">
+              Attend 0.9.0 · iPhone
+            </p>
+          </div>
+
+          <motion.div
+            className="flex items-center justify-center gap-2"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.35 }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sage-500">
+              <Check size={12} strokeWidth={3} className="text-white" />
+            </span>
+            <span className="font-sans text-[11px] text-ink-500">
+              That is with them now
+            </span>
+          </motion.div>
         </div>
       );
 

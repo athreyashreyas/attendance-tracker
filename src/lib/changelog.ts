@@ -45,6 +45,7 @@ export const CHANGELOG: Release[] = [
     howTo: [
       'Open Settings and scroll to "Make Attend Yours", then choose whether it is a bug or an idea.',
     ],
+    art: ['message'],
   },
   {
     version: '0.8.0',
