@@ -229,15 +229,6 @@ export function SettingsPage() {
         )}
       </Section>
 
-      {/* About */}
-      <Section title="About">
-        <Row label="Version" value={APP_VERSION} />
-        <p className="mt-2 font-sans text-sm text-ink-500">
-          Attend keeps your classes and attendance on your device, and quietly backs
-          them up to your account.
-        </p>
-      </Section>
-
       {/* Speaking to us */}
       <Section title="Make Attend Yours">
         <p className="mb-3 font-sans text-xs text-ink-500">
@@ -320,6 +311,15 @@ export function SettingsPage() {
             <ChevronRight size={18} className="shrink-0 text-ink-300" />
           </button>
         </div>
+      </Section>
+
+      {/* About */}
+      <Section title="About">
+        <Row label="Version" value={APP_VERSION} />
+        <p className="mt-2 font-sans text-sm text-ink-500">
+          Attend keeps your classes and attendance on your device, and quietly backs
+          them up to your account.
+        </p>
       </Section>
 
       <FeedbackSheet kind={feedback} onClose={() => setFeedback(null)} />
