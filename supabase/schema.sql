@@ -114,6 +114,11 @@ create trigger trg_updated_at_sessions
 -- ============================================================
 -- AUDIT LOG TRIGGER
 -- ============================================================
+--
+-- SUPERSEDED by migration-009-audit-retention.sql, which must be applied on
+-- top of this file. The version below copies whole rows on every change, and
+-- two of them on an update, which made the log 70% of everything stored. Do
+-- not copy it into anything new; see supabase/README.md for the rule.
 
 create or replace function public.create_audit_log()
 returns trigger language plpgsql security definer as $$
