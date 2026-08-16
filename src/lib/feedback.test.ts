@@ -15,7 +15,7 @@ const ctx: FeedbackContext = {
 };
 
 describe('composeFeedback', () => {
-  it('names the version and the kind in the subject, so my inbox sorts itself', () => {
+  it("names the version and the kind in the subject, so the creator's inbox sorts itself", () => {
     expect(composeFeedback('bug', 'The ring is stuck.', ctx).subject).toBe(
       'Attend 0.9.0 · Bug report'
     );

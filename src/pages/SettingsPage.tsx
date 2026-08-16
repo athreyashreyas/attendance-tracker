@@ -238,6 +238,49 @@ export function SettingsPage() {
         </p>
       </Section>
 
+      {/* Speaking to us */}
+      <Section title="Make Attend Yours">
+        <p className="mb-3 font-sans text-xs text-ink-500">
+          Attend is built and maintained by one person, and this goes
+          straight to their desk. Say what broke, or what you wish the app did. It does not need
+          to be long.
+        </p>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setFeedback('bug')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <Bug size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                Report something broken
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                Found a bug, or something that does not work as you expect? Let us know so we can fix it.
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setFeedback('idea')}
+            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
+          >
+            <Lightbulb size={18} className="shrink-0 text-ink-500" />
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-sm font-medium text-ink-900">
+                Suggest something
+              </p>
+              <p className="font-sans text-xs text-ink-500">
+                Any and all ideas are welcome. Especially half-formed ones.
+              </p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-ink-300" />
+          </button>
+        </div>
+      </Section>
+
       {/* Guide and what's new */}
       <Section title="Guide">
         <p className="mb-3 font-sans text-xs text-ink-500">
@@ -272,49 +315,6 @@ export function SettingsPage() {
               </p>
               <p className="font-sans text-xs text-ink-500">
                 {latest.version} · {latest.title}
-              </p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-ink-300" />
-          </button>
-        </div>
-      </Section>
-
-      {/* Speaking to the creator */}
-      <Section title="Speak to the creator and let them know your thoughts">
-        <p className="mb-3 font-sans text-xs text-ink-500">
-          Attend is made by one person, and these go straight to them. Say what
-          broke or what you wish it did, in as few words as you like. Every
-          message is read.
-        </p>
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setFeedback('bug')}
-            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
-          >
-            <Bug size={18} className="shrink-0 text-ink-500" />
-            <div className="min-w-0 flex-1">
-              <p className="font-sans text-sm font-medium text-ink-900">
-                Report something broken
-              </p>
-              <p className="font-sans text-xs text-ink-500">
-                Found a bug, or something that does not work as you expect? Let us know so we can fix it.
-              </p>
-            </div>
-            <ChevronRight size={18} className="shrink-0 text-ink-300" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setFeedback('idea')}
-            className="flex w-full items-center gap-3 rounded-card bg-parchment-100 p-3.5 text-left"
-          >
-            <Lightbulb size={18} className="shrink-0 text-ink-500" />
-            <div className="min-w-0 flex-1">
-              <p className="font-sans text-sm font-medium text-ink-900">
-                Suggest something
-              </p>
-              <p className="font-sans text-xs text-ink-500">
-                Any and all ideas are welcome. Especially half-formed ones.
               </p>
             </div>
             <ChevronRight size={18} className="shrink-0 text-ink-300" />

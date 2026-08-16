@@ -62,7 +62,7 @@ export function FeedbackSheet({ kind, onClose }: FeedbackSheetProps) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Speak to the creator">
+    <BottomSheet open={open} onClose={onClose} title="Make Attend yours">
       {state === 'sent' || state === 'queued' ? (
         <Delivered queued={state === 'queued'} account={account} onClose={onClose} />
       ) : (
@@ -106,7 +106,7 @@ export function FeedbackSheet({ kind, onClose }: FeedbackSheetProps) {
 
           <p className="font-sans text-xs text-ink-500">
             Your message will be personally attended to and version updates based on your feedback will auto sync on all the devices you use Attend on.
-            {account ? ` Any reply from the creator will come directly to ${account}.` : ''}
+            {account ? ` Any reply will come directly to ${account}.` : ''}
           </p>
 
           {/* A line is always held here, so an error arriving never shoves the
@@ -155,30 +155,30 @@ function Delivered({
       </motion.div>
 
       <p className="text-center font-serif text-xl text-ink-900">
-        {queued ? 'Saved, and it will send itself.' : 'That is on its way.'}
+        {queued ? 'Saved, and it will send itself.' : 'That is with them now.'}
       </p>
 
       <div className="mx-auto mt-3 max-w-sm space-y-2.5 text-center font-sans text-sm text-ink-500">
         {queued ? (
           <p>
-            It could not go just now, so it is waiting safely on your device.
-            Attend will send it as soon as it can get through. You can close the
-            app and forget you wrote it.
+            It could not go just now, so it is sitting on your device. Attend
+            sends it the next time it gets a connection, whether or not you open
+            the app again.
           </p>
         ) : (
           <p>
-            Your version and the device you are holding went along with it, so
-            they can see what you saw.
+            It arrived with your version and device attached, so they can see the
+            same screen you were looking at.
           </p>
         )}
         <p>
-          One person makes Attend, and they read every message. Bugs are looked
-          at quickly, and ideas are thought about properly. A fair few of the
-          things already in the app started with somebody writing in like this.
+          Attend is built and maintained by one person. They read what comes in,
+          and they write back when there is something worth saying. A fair
+          amount of what is in the app now started as somebody&apos;s message.
         </p>
         {account && (
           <p>
-            Where there is an answer worth giving, it comes to{' '}
+            Any reply will come to{' '}
             <span className="selectable font-medium text-ink-700">{account}</span>.
           </p>
         )}

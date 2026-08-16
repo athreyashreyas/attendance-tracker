@@ -43,7 +43,7 @@ export const CHANGELOG: Release[] = [
       'The overview grid on a class page also reads properly now. Each month begins on its own 1st instead of running into the one before it, and a term that starts on the 8th or ends mid-month no longer leaves a blank week sitting in the grid.',
     ],
     howTo: [
-      'Open Settings and scroll to "Speak to the creator and let them know your thoughts", then choose whether it is a bug or an idea.',
+      'Open Settings and scroll to "Make Attend Yours", then choose whether it is a bug or an idea.',
     ],
   },
   {

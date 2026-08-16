@@ -24,7 +24,7 @@ const MIN_FEEDBACK_LENGTH = 4;
 interface KindCopy {
   /** The tab, and the word used for it everywhere in the sheet. */
   label: string;
-  /** How it reads in my inbox. */
+  /** How it reads in the creator's inbox. */
   subject: string;
   prompt: string;
   placeholder: string;
@@ -43,7 +43,7 @@ export const FEEDBACK_KINDS: Record<FeedbackKind, KindCopy> = {
     label: 'An idea',
     subject: 'Feature idea',
     prompt:
-      'What would you like Attend to do? Half-formed is welcome. A good few of the things already here started as somebody asking.',
+      'What would you like Attend to do? It does not have to be a finished idea. A fair amount of what is here now started as somebody asking for it.',
     placeholder: 'It would help if I could...',
   },
 };
@@ -64,7 +64,7 @@ export interface ComposedFeedback {
 }
 
 /**
- * The message as it arrives in my inbox: their words on top, untouched, and
+ * The message as it arrives in the creator's inbox: their words on top, and
  * the details underneath that they should never have to type out themselves.
  */
 export function composeFeedback(
@@ -78,7 +78,7 @@ export function composeFeedback(
     `Sent ${ctx.sentAt}`,
     ctx.account ? `From ${ctx.account}` : 'Not signed in',
   ];
-  // A note to myself, because the reply-to is easy to miss in a mail client.
+  // A nudge for the creator, since a reply-to is easy to miss in a mail client.
   if (ctx.account) footer.push('Replying to this email reaches them.');
 
   return {
@@ -93,11 +93,11 @@ export function composeFeedback(
  */
 export function feedbackError(message: string): string | null {
   const trimmed = message.trim();
-  if (trimmed.length === 0) return 'Write a line or two and it is ready to go.';
+  if (trimmed.length === 0) return 'Write a line or two first.';
   if (trimmed.length < MIN_FEEDBACK_LENGTH)
-    return 'A few more words and I will know what you mean.';
+    return 'A few more words and they will know what you mean.';
   if (trimmed.length > MAX_FEEDBACK_LENGTH)
-    return `That is longer than this box can carry. Trim it to about ${MAX_FEEDBACK_LENGTH} characters and send the rest in a second message.`;
+    return `This is longer than the box can carry. Trim it to about ${MAX_FEEDBACK_LENGTH} characters and send the rest separately.`;
   return null;
 }
 

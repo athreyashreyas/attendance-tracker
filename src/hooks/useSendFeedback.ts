@@ -24,9 +24,9 @@ function isInstalled(): boolean {
 }
 
 /**
- * Sends a message to the person who makes Attend, or keeps it safe until it
- * can be sent. Nothing written here can be lost: the only two endings are that
- * it went, or that it is waiting on the device to go.
+ * Sends a message to the creator, or keeps it safe until it can be sent.
+ * Nothing written here can be lost: the only two endings are that it went, or
+ * that it is waiting on the device to go.
  */
 export function useSendFeedback() {
   const { user } = useAuth();

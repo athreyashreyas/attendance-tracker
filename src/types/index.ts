@@ -107,8 +107,8 @@ export interface SyncQueueItem {
 }
 
 /**
- * A message written in Settings that has not reached the creator yet. It waits
- * on the device, exactly like an unsent change waits in the sync queue, and
+ * A message written in Settings that has not reached the creator yet. It
+ * waits on the device, exactly like an unsent change waits in the sync queue, and
  * goes out on its own once there is a connection again.
  */
 export interface FeedbackOutboxItem {

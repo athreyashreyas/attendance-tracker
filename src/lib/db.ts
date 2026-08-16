@@ -49,8 +49,8 @@ export async function clearLocalDb(): Promise<void> {
         db.sessions.clear(),
         db.sync_queue.clear(),
         // An unsent message goes too. The relay stamps the sender from whoever
-        // is signed in, so a message left behind would reach the creator under
-        // the name of the next person to use this device.
+        // is signed in, so a message left behind would reach the creator
+        // under the name of the next person to use this device.
         db.feedback_outbox.clear(),
       ]);
     }

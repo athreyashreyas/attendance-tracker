@@ -165,15 +165,15 @@ export const GUIDE: GuideSection[] = [
   },
   {
     id: 'talk',
-    title: 'Speaking to the creator',
+    title: 'Making Attend yours',
     body: [
-      'One person makes Attend, and Settings has a line straight to them. If something is broken, say so. If the app should do something it does not yet do, say that too. You do not have to be certain, you do not have to be technical, and you do not have to soften it.',
+      'Attend is built and maintained by one person, and Settings has a line straight to their desk. If something is broken, say so. If you want the app to do something it does not, say that. You do not have to be sure you are right.',
       'Your version and the device you are holding travel with the message, so you can describe what you saw and leave the rest alone.',
-      'They read all of it. Bugs are looked at quickly, ideas are thought about properly, and where there is an answer worth giving it comes to the email you signed up with.',
-      'Writing it offline is fine. The message waits on your device and goes out by itself the next time you have a connection, so you can close the app and forget you sent it.',
+      'They read everything that comes in. Bugs tend to get dealt with first. Where there is a reply to give, it comes to the email you signed up with.',
+      'Writing it offline is fine. The message waits on your device and sends itself the next time you have a connection.',
     ],
     steps: [
-      'Open Settings and scroll to "Speak to the creator and let them know your thoughts".',
+      'Open Settings and scroll to "Make Attend Yours".',
       'Choose whether it is something broken or an idea, then write as much or as little as you like.',
     ],
   },

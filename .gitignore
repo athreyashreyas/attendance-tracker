@@ -30,5 +30,8 @@ dev-dist
 *.sln
 *.sw?
 
+# Supabase CLI scratch state (linked project ref, version cache)
+supabase/.temp
+
 # Claude Code transient state
 .claude/scheduled_tasks.lock
