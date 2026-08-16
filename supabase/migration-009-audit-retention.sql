@@ -119,6 +119,17 @@ declare
   _thinned bigint;
   _removed bigint;
 begin
+  -- A small recent_days silently strips the detail this table exists to keep,
+  -- including the deleted-row copies that exist nowhere else. Asking for it is
+  -- almost always a mistake (it was made once, by hand, on 2026-08-16), so
+  -- refuse rather than oblige.
+  if recent_days < 7 then
+    raise exception 'recent_days = % would strip payloads the log exists to keep; use 7 or more', recent_days;
+  end if;
+  if keep_days <= recent_days then
+    raise exception 'keep_days (%) must be greater than recent_days (%)', keep_days, recent_days;
+  end if;
+
   update public.attendance_audit_log
      set old_data = null,
          new_data = null
