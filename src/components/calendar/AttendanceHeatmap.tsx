@@ -1,5 +1,12 @@
-import { Fragment, useMemo } from 'react';
-import { eachDayOfInterval, startOfWeek, endOfWeek, format } from 'date-fns';
+import { useMemo } from 'react';
+import {
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  getDay,
+  format,
+} from 'date-fns';
 import {
   toDateKey,
   fromDateKey,
@@ -66,27 +73,26 @@ export function AttendanceHeatmap({
     return map;
   }, [sessions]);
 
-  const weeks = useMemo(() => {
-    const start = startOfWeek(fromDateKey(semesterStart), { weekStartsOn: 0 });
-    const end = endOfWeek(fromDateKey(semesterEnd), { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start, end });
-    const rows: Date[][] = [];
-    for (let i = 0; i < days.length; i += 7) rows.push(days.slice(i, i + 7));
-    return rows;
+  // Every month the term touches, each one its own grid. A month opens on its
+  // own 1st under the right weekday, so no row ever carries two months at once.
+  const months = useMemo(() => {
+    const first = startOfMonth(fromDateKey(semesterStart));
+    const last = startOfMonth(fromDateKey(semesterEnd));
+    const out: { label: string; lead: number; days: Date[] }[] = [];
+    for (let m = first; m <= last; m = addMonths(m, 1)) {
+      out.push({
+        label: format(m, 'MMMM yyyy'),
+        lead: getDay(m), // blanks before the 1st, so it lands on its weekday
+        days: eachDayOfInterval({ start: m, end: endOfMonth(m) }),
+      });
+    }
+    return out;
   }, [semesterStart, semesterEnd]);
 
   const rangeStart = semesterStart;
   const rangeEnd = semesterEnd;
 
   const off = useMemo(() => new Set(daysOff(course)), [course]);
-
-  // Day numbers alone are ambiguous in a continuous week grid, so each week that
-  // opens a new month carries its name above it.
-  function monthLabel(week: Date[], index: number): string | null {
-    if (index === 0) return format(fromDateKey(semesterStart), 'MMMM yyyy');
-    const firstOfMonth = week.find((d) => d.getDate() === 1);
-    return firstOfMonth ? format(firstOfMonth, 'MMMM yyyy') : null;
-  }
 
   return (
     <div>
@@ -101,22 +107,18 @@ export function AttendanceHeatmap({
         ))}
       </div>
 
-      <div className="space-y-1.5">
-        {weeks.map((week, index) => {
-          const label = monthLabel(week, index);
+      <div className="space-y-4">
+        {months.map(({ label, lead, days }) => {
           return (
-            <Fragment key={toDateKey(week[0])}>
-              {label && (
-                <p
-                  className={`font-sans text-[10px] font-medium uppercase tracking-wide text-ink-300 ${
-                    index === 0 ? '' : 'pt-1.5'
-                  }`}
-                >
-                  {label}
-                </p>
-              )}
+            <div key={label}>
+              <p className="mb-1.5 font-sans text-[10px] font-medium uppercase tracking-wide text-ink-300">
+                {label}
+              </p>
               <div className="grid grid-cols-7 gap-1.5">
-                {week.map((day) => {
+                {Array.from({ length: lead }, (_, i) => (
+                  <div key={`lead-${i}`} aria-hidden />
+                ))}
+                {days.map((day) => {
                   const key = toDateKey(day);
                   const inRange = key >= rangeStart && key <= rangeEnd;
                   const dayOff = off.has(key);
@@ -220,7 +222,7 @@ export function AttendanceHeatmap({
                   );
                 })}
               </div>
-            </Fragment>
+            </div>
           );
         })}
       </div>
