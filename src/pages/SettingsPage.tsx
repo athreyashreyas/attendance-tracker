@@ -234,9 +234,8 @@ export function SettingsPage() {
         <p className="mb-3 font-sans text-xs text-ink-500">
           If Attend has turned out to be any good, it is because users like you chose to
           give it time and share their valuable feedback. To continue that tradition of
-          bespoke attention, you can write to the creator here, and it goes straight to
-          their desk. Say what broke, or what you wish the app did. It does not need
-          to be long.
+          bespoke attention, you can write to the creator here. Say what broke, or what you wish the app did. 
+          It does not need to be long.
         </p>
         <div className="space-y-2">
           <button
