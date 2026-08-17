@@ -4,7 +4,7 @@ import { syncEngine } from '../lib/sync';
 import { db } from '../lib/db';
 import { toRemote } from '../utils/records';
 import { nowIso, todayKey } from '../utils/dates';
-import { isArchivedRecord, shouldAutoArchive } from '../lib/archive';
+import { shouldAutoArchive, semestersCoveringCourses } from '../lib/archive';
 import { useAllCourses } from './useCourses';
 import { useSemesters } from './useSemesters';
 import type { Course, Semester } from '../types';
@@ -38,14 +38,9 @@ export function useAutoArchive(): void {
       shouldAutoArchive(s, s.end_date, today)
     );
 
-    // Classes in a term that is (or is about to be) archived are covered by the
-    // term itself. Leaving their own flag alone is what lets restoring a term
-    // hand every one of its classes back, while a class the user archived early
-    // keeps its own mark and stays put.
-    const coveredBySemester = new Set([
-      ...semesters.filter(isArchivedRecord).map((s) => s.id),
-      ...staleSemesters.map((s) => s.id),
-    ]);
+    // Which terms answer for their own classes, so the sweep leaves those
+    // classes' flags alone. The rule lives in archive.ts with the rest of it.
+    const coveredBySemester = semestersCoveringCourses(semesters, today);
 
     const staleCourses = courses.filter((c) => {
       if (c.semester_id && coveredBySemester.has(c.semester_id)) return false;

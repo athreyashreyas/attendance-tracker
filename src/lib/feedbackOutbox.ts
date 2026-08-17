@@ -32,13 +32,16 @@ async function relay(item: FeedbackOutboxItem): Promise<void> {
 
 /**
  * Tries to send now, and keeps the message if it cannot. Returns how it went,
- * so the sheet can tell the truth about which of the two happened.
+ * so the sheet can tell the truth about which of the three happened.
+ *
+ * 'failed' is the one the sheet must not paper over: the device would not even
+ * store the message, so promising it will go later would be a lie.
  */
 export async function sendOrQueueFeedback(
   kind: FeedbackKind,
   subject: string,
   body: string
-): Promise<'sent' | 'queued'> {
+): Promise<'sent' | 'queued' | 'failed'> {
   const item: FeedbackOutboxItem = {
     kind,
     subject,
@@ -56,8 +59,14 @@ export async function sendOrQueueFeedback(
     }
   }
 
-  await db.feedback_outbox.add({ ...item, attempts: 1 });
-  return 'queued';
+  try {
+    await db.feedback_outbox.add({ ...item, attempts: 1 });
+    return 'queued';
+  } catch {
+    // Storage full, or a Dexie upgrade blocked by another tab. Nothing has
+    // been kept, so say so rather than showing the "it will send itself" note.
+    return 'failed';
+  }
 }
 
 /** How many messages are still waiting. */
@@ -72,13 +81,13 @@ export async function pendingFeedbackCount(): Promise<number> {
 export async function flushFeedbackOutbox(): Promise<void> {
   if (flushing || !navigator.onLine) return;
 
-  // The relay stamps the sender from their session, so there is nobody to
-  // attribute a message to until somebody is signed in.
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) return;
-
   flushing = true;
   try {
+    // The relay stamps the sender from their session, so there is nobody to
+    // attribute a message to until somebody is signed in.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+
     const waiting = await db.feedback_outbox.orderBy('created_at').toArray();
     for (const item of waiting) {
       try {
@@ -97,6 +106,11 @@ export async function flushFeedbackOutbox(): Promise<void> {
         break;
       }
     }
+  } catch {
+    // Best effort, and fired from event listeners that cannot await it. A
+    // failure here means the queue is untouched and the next reconnect or
+    // foreground will try again, so there is nothing to report and nothing
+    // to leave as an unhandled rejection.
   } finally {
     flushing = false;
   }

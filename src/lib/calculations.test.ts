@@ -5,6 +5,7 @@ import {
   classesOnDay,
   computeAttendanceStats,
   computeTermProjection,
+  MAX_TERM_DAYS,
   countClassDays,
   daysOff,
   expandToClasses,
@@ -17,7 +18,7 @@ import {
   termWindow,
 } from './calculations';
 import { makeCourse, makeSemester, makeSession, makeSessions } from './test-factories';
-import { toDateKey } from '../utils/dates';
+import { fromDateKey, toDateKey } from '../utils/dates';
 import type { Course, ScheduleDay, Session, SessionStatus } from '../types';
 
 // September 2026: the 7th, 14th, 21st and 28th are Mondays; the 9th, 16th,
@@ -481,5 +482,29 @@ describe('computeTermProjection', () => {
       bestPct: 0,
       worstPct: 0,
     });
+  });
+});
+
+describe('runaway date ranges', () => {
+  // A mistyped year in the class form used to walk the range a day at a time
+  // on every keystroke: 9999 is roughly 2.9 million iterations, three times
+  // over, which locks the tab. Past MAX_TERM_DAYS the range is refused.
+  it('refuses a span longer than ten years rather than walking it', () => {
+    expect(countClassDays([1, 3], '2026-01-01', '9999-12-31', [])).toBe(0);
+  });
+
+  it('still counts a range that sits just inside the bound', () => {
+    // 3660 days is a shade over ten years, so this is the last accepted span.
+    const end = toDateKey(addDays(fromDateKey('2026-01-01'), MAX_TERM_DAYS));
+    expect(countClassDays([1], '2026-01-01', end, [])).toBeGreaterThan(0);
+    const tooFar = toDateKey(addDays(fromDateKey('2026-01-01'), MAX_TERM_DAYS + 1));
+    expect(countClassDays([1], '2026-01-01', tooFar, [])).toBe(0);
+  });
+
+  it('refuses the same span when expanding a schedule into dates', () => {
+    const course = makeCourse({ schedule_days: [1, 3] });
+    expect(
+      generateExpectedDates(course, fromDateKey('2026-01-01'), fromDateKey('9999-12-31'))
+    ).toEqual([]);
   });
 });

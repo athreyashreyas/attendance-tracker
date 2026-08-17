@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { differenceInCalendarDays } from 'date-fns';
 import { Archive, ChevronDown, Minus, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
@@ -10,9 +11,18 @@ import { DaysOffPicker } from './DaysOffPicker';
 import { useCourseMutations } from '../../hooks/useCourses';
 import { db } from '../../lib/db';
 import { DEFAULT_COURSE_COLOR } from '../../lib/colors';
-import { countClassDays, scheduleHoldsClass } from '../../lib/calculations';
+import {
+  MAX_TERM_DAYS,
+  countClassDays,
+  scheduleHoldsClass,
+} from '../../lib/calculations';
 import { MAX_CLASSES_PER_DAY, normalizeCount, slotOf } from '../../lib/slots';
-import { WEEK_ORDER, DAY_LABELS, formatLongDate } from '../../utils/dates';
+import {
+  WEEK_ORDER,
+  DAY_LABELS,
+  formatLongDate,
+  fromDateKey,
+} from '../../utils/dates';
 import type { ClassesPerDay, Course, ScheduleDay, Semester } from '../../types';
 
 const DAY_SHORT: Record<number, string> = {
@@ -190,13 +200,19 @@ export function CourseForm({
     [days, perDay]
   );
 
+  // The stranded-marks panel is counted against the schedule as it stood when
+  // it was opened. Any control that moves the schedule has to retire it, or
+  // "Save anyway" skips the recount and the newly stranded marks go unreported
+  // by the one dialog whose whole job is reporting them.
   function toggleDay(day: ScheduleDay) {
+    setLosses(null);
     setDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   }
 
   function setDayCount(day: ScheduleDay, count: number) {
+    setLosses(null);
     setPerDay((prev) => {
       const next = { ...prev };
       const value = normalizeCount(count);
@@ -204,6 +220,11 @@ export function CourseForm({
       else delete next[day];
       return next;
     });
+  }
+
+  function changeDaysOff(next: string[]) {
+    setLosses(null);
+    setExcluded(next);
   }
 
   /**
@@ -273,6 +294,13 @@ export function CourseForm({
     }
     if (start && end && end < start) {
       setError('The last class should be on or after the first.');
+      return;
+    }
+    // Beyond this the schedule helpers refuse the range rather than walk it a
+    // day at a time, so the class would silently show no classes at all. It is
+    // always a mistyped year.
+    if (start && end && differenceInCalendarDays(fromDateKey(end), fromDateKey(start)) > MAX_TERM_DAYS) {
+      setError('Those dates are more than ten years apart. Check the year.');
       return;
     }
     // Only constrain dates to the semester when the class is linked to one.
@@ -571,7 +599,7 @@ export function CourseForm({
                   start={windowStart}
                   end={windowEnd}
                   value={excluded}
-                  onChange={setExcluded}
+                  onChange={changeDaysOff}
                   color={color}
                 />
               </motion.div>

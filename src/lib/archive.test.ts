@@ -4,6 +4,7 @@ import {
   hasEnded,
   isArchivedRecord,
   isCourseArchived,
+  semestersCoveringCourses,
   shouldAutoArchive,
 } from './archive';
 import { makeCourse, makeSemester } from './test-factories';
@@ -70,5 +71,44 @@ describe('shouldAutoArchive', () => {
     // Restoring clears auto_archive, so the sweep cannot undo the choice.
     const restored = makeCourse({ auto_archive: false });
     expect(shouldAutoArchive(restored, '2026-12-18', today)).toBe(false);
+  });
+});
+
+describe('semestersCoveringCourses', () => {
+  const today = '2026-08-17';
+
+  it('covers the classes of a term the user pulled back out of the archive', () => {
+    // Without this the term empties itself on the next sweep, and each class
+    // gets an archived_at that restoring the term again cannot clear.
+    const restored = makeSemester({
+      id: 'term-1',
+      end_date: '2026-06-30', // already over
+      archived_at: null,
+      auto_archive: false, // the mark left by restoring it
+    });
+    expect(semestersCoveringCourses([restored], today).has('term-1')).toBe(true);
+  });
+
+  it('still lets a class in a live term archive on its own when it ends early', () => {
+    const live = makeSemester({
+      id: 'term-2',
+      end_date: '2026-12-31', // still running
+      archived_at: null,
+      auto_archive: true,
+    });
+    expect(semestersCoveringCourses([live], today).has('term-2')).toBe(false);
+  });
+
+  it('covers an archived term and one this sweep is about to archive', () => {
+    const archived = makeSemester({ id: 'a', archived_at: ARCHIVED_AT });
+    const ending = makeSemester({
+      id: 'b',
+      end_date: '2026-06-30',
+      archived_at: null,
+      auto_archive: true,
+    });
+    const covered = semestersCoveringCourses([archived, ending], today);
+    expect(covered.has('a')).toBe(true);
+    expect(covered.has('b')).toBe(true);
   });
 });

@@ -283,8 +283,26 @@ export function expandToClasses(course: Course, dates: Date[]): ExpectedClass[] 
 }
 
 /**
+ * The longest span these helpers will walk, a day at a time. Ten years is far
+ * beyond any real class and short enough that a typo cannot lock up the tab:
+ * a mistyped year like 9999 would otherwise be roughly 2.9 million iterations,
+ * recomputed on every keystroke in the class form.
+ *
+ * Past this the range is treated as invalid rather than truncated, so nothing
+ * silently reports a term it only half counted. The class form checks the same
+ * bound and says so before a save gets this far.
+ */
+export const MAX_TERM_DAYS = 3660;
+
+/** Whole days from one date to another, both ends local midnight. */
+function spanInDays(start: Date, end: Date): number {
+  return Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+}
+
+/**
  * Generate expected session dates for a course between two dates, based on its
- * schedule_days array and minus its days off. Returns [] for an invalid range.
+ * schedule_days array and minus its days off. Returns [] for an invalid range,
+ * which includes a span longer than MAX_TERM_DAYS.
  */
 export function generateExpectedDates(
   course: Course,
@@ -295,7 +313,8 @@ export function generateExpectedDates(
   if (
     Number.isNaN(startDate.getTime()) ||
     Number.isNaN(endDate.getTime()) ||
-    course.schedule_days.length === 0
+    course.schedule_days.length === 0 ||
+    spanInDays(startDate, endDate) > MAX_TERM_DAYS
   ) {
     return dates;
   }
@@ -334,6 +353,7 @@ export function countClassDays(
   const off = new Set(excluded);
   const current = new Date(`${startKey}T00:00:00`);
   const end = new Date(`${endKey}T00:00:00`);
+  if (spanInDays(current, end) > MAX_TERM_DAYS) return 0;
   let count = 0;
   while (current <= end) {
     const key = format(current, 'yyyy-MM-dd');

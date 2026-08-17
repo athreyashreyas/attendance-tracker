@@ -112,3 +112,13 @@ describe('monthGrids', () => {
     expect(grids.at(-1)!.days).toHaveLength(5); // 1 to 5 December
   });
 });
+
+describe('monthGrids guards a runaway range', () => {
+  it('draws nothing for a span that is a mistyped year rather than a term', () => {
+    expect(monthGrids('2026-01-01', '9999-12-31')).toEqual([]);
+  });
+
+  it('still draws a long but plausible course', () => {
+    expect(monthGrids('2026-01-01', '2028-12-31').length).toBe(36);
+  });
+});

@@ -45,7 +45,11 @@ export function useSendFeedback() {
 
       setState('sending');
       const outcome = await sendOrQueueFeedback(kind, mail.subject, mail.body);
-      setState(outcome);
+      // A message that could not even be stored goes back to the form with
+      // every word still in the box, rather than leaving the button reading
+      // "Sending" for ever over a message that no longer exists anywhere.
+      setState(outcome === 'failed' ? 'idle' : outcome);
+      return outcome;
     },
     [account]
   );

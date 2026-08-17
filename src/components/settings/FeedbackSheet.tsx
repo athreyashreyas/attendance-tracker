@@ -53,7 +53,12 @@ export function FeedbackSheet({ kind, onClose }: FeedbackSheetProps) {
     const problem = feedbackError(message);
     setError(problem);
     if (problem) return;
-    await send(active, message);
+    const outcome = await send(active, message);
+    if (outcome === 'failed') {
+      setError(
+        'That could not be saved on this device just now. Your words are still here, so please try again.'
+      );
+    }
   }
 
   function chooseKind(next: FeedbackKind) {

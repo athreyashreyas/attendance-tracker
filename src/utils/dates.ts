@@ -6,6 +6,7 @@ import {
   endOfMonth,
   eachDayOfInterval,
   getDay,
+  differenceInCalendarDays,
 } from 'date-fns';
 
 /** Convert a Date to a stable 'YYYY-MM-DD' string (local time). */
@@ -70,6 +71,11 @@ export interface MonthGrid {
  */
 export function monthGrids(startKey: string, endKey: string): MonthGrid[] {
   if (endKey < startKey) return [];
+  // A term this long is a mistyped year rather than a term, and drawing it a
+  // month at a time would lock the page up. See MAX_TERM_DAYS in calculations.
+  if (differenceInCalendarDays(fromDateKey(endKey), fromDateKey(startKey)) > 3660) {
+    return [];
+  }
 
   const grids: MonthGrid[] = [];
   const lastMonth = startOfMonth(fromDateKey(endKey));

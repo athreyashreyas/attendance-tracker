@@ -47,6 +47,40 @@ export function hasEnded(
   return !!end && end < today;
 }
 
+/**
+ * The terms whose classes must not be filed away on their own account, by id.
+ *
+ * A class inherits its archived state from its term, which is what lets
+ * archiving a term take its classes with it and restoring one hand them all
+ * back. Three kinds of term cover their classes:
+ *
+ *   - already archived, so the classes are archived by inheritance;
+ *   - about to be archived by this same sweep;
+ *   - pulled back out of the archive by the user.
+ *
+ * The last is the one that is easy to miss. Without it a restored term empties
+ * itself: every class in it has an end date in the past and no archived_at of
+ * its own, so the sweep files each one away individually, and the archived_at
+ * it stamps on them cannot be cleared by restoring the term again.
+ */
+export function semestersCoveringCourses(
+  semesters: Semester[],
+  today: string
+): Set<string> {
+  const covering = new Set<string>();
+  for (const s of semesters) {
+    const restoredByHand = !isArchivedRecord(s) && s.auto_archive === false;
+    if (
+      isArchivedRecord(s) ||
+      shouldAutoArchive(s, s.end_date, today) ||
+      restoredByHand
+    ) {
+      covering.add(s.id);
+    }
+  }
+  return covering;
+}
+
 /** Records the app may file away on its own: ended, live, and not exempted. */
 export function shouldAutoArchive(
   record: Course | Semester,
