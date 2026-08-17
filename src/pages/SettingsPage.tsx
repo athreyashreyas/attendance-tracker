@@ -156,7 +156,7 @@ export function SettingsPage() {
       <Section title="Archive">
         <p className="mb-3 font-sans text-xs text-ink-500">
           Finished terms and classes move here on their own once their last date
-          has passed. Nothing is deleted, and anything can be brought back.
+          has passed. Nothing is deleted, and everything can be brought back if you so choose.
         </p>
         <button
           type="button"
@@ -232,8 +232,10 @@ export function SettingsPage() {
       {/* Speaking to us */}
       <Section title="Make Attend Yours">
         <p className="mb-3 font-sans text-xs text-ink-500">
-          Attend is built and maintained by one person, and this goes
-          straight to their desk. Say what broke, or what you wish the app did. It does not need
+          If Attend has turned out to be any good, it is because users like you chose to
+          give it time and share their valuable feedback. To continue that tradition of
+          bespoke attention, you can write to the creator here, and it goes straight to
+          their desk. Say what broke, or what you wish the app did. It does not need
           to be long.
         </p>
         <div className="space-y-2">
