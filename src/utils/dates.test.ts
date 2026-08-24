@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { monthGrids, toDateKey } from './dates';
+import {
+  DAY_LABELS,
+  DAY_LABELS_SHORT,
+  WEEK_ORDER,
+  formatLongDate,
+  formatMonthLabel,
+  formatSessionDate,
+  fromDateKey,
+  monthGrids,
+  nowIso,
+  toDateKey,
+  todayKey,
+} from './dates';
 
 /** The days of one grid as 'YYYY-MM-DD', for readable assertions. */
 function keys(days: Date[]): string[] {
@@ -120,5 +132,109 @@ describe('monthGrids guards a runaway range', () => {
 
   it('still draws a long but plausible course', () => {
     expect(monthGrids('2026-01-01', '2028-12-31').length).toBe(36);
+  });
+});
+
+describe('toDateKey / fromDateKey', () => {
+  it('round-trips a local date through its key', () => {
+    const d = new Date(2026, 8, 7, 14, 30); // 7 Sep 2026, afternoon
+    expect(toDateKey(d)).toBe('2026-09-07');
+    expect(toDateKey(fromDateKey('2026-09-07'))).toBe('2026-09-07');
+  });
+
+  it('zero-pads a single-digit month and day', () => {
+    expect(toDateKey(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('keys by the local date, not the UTC one', () => {
+    // A key is a calendar day, not an instant. Going through toISOString here
+    // would name the previous day anywhere ahead of Greenwich, and a class
+    // marked late in the evening would land on yesterday.
+    expect(toDateKey(new Date(2026, 8, 7, 23, 59))).toBe('2026-09-07');
+    expect(toDateKey(new Date(2026, 8, 7, 0, 1))).toBe('2026-09-07');
+  });
+
+  it('parses a key to local midnight, so the day never shifts back', () => {
+    const parsed = fromDateKey('2026-09-07');
+    expect(parsed.getFullYear()).toBe(2026);
+    expect(parsed.getMonth()).toBe(8);
+    expect(parsed.getDate()).toBe(7);
+    expect(parsed.getHours()).toBe(0);
+  });
+
+  it('orders as a string exactly as it orders as a date', () => {
+    // Everything downstream compares keys with < and >, so this is the property
+    // the whole date layer leans on.
+    const keys = ['2026-01-31', '2026-02-01', '2026-09-07', '2026-10-01', '2027-01-01'];
+    for (let i = 1; i < keys.length; i++) {
+      expect(keys[i - 1] < keys[i]).toBe(true);
+      expect(fromDateKey(keys[i - 1]) < fromDateKey(keys[i])).toBe(true);
+    }
+  });
+
+  it('handles a leap day', () => {
+    expect(toDateKey(new Date(2028, 1, 29))).toBe('2028-02-29');
+    expect(fromDateKey('2028-02-29').getDate()).toBe(29);
+  });
+});
+
+describe('the display formats', () => {
+  it('writes a session date as a weekday and a short month', () => {
+    expect(formatSessionDate('2026-09-07')).toBe('Mon, 7 Sep');
+  });
+
+  it('writes a long date without padding the day', () => {
+    expect(formatLongDate('2026-09-07')).toBe('7 September 2026');
+    expect(formatLongDate('2026-12-25')).toBe('25 December 2026');
+  });
+
+  it('labels a month with its year, so a two-term range never reads ambiguously', () => {
+    expect(formatMonthLabel(new Date(2026, 8, 1))).toBe('September 2026');
+    expect(formatMonthLabel(new Date(2027, 0, 15))).toBe('January 2027');
+  });
+
+  it('formats from the key rather than from an instant', () => {
+    // Same guard as toDateKey, from the other direction: a formatter that went
+    // through UTC would print the day before.
+    expect(formatSessionDate('2026-01-01')).toBe('Thu, 1 Jan');
+    expect(formatLongDate('2026-01-01')).toBe('1 January 2026');
+  });
+});
+
+describe('the weekday tables', () => {
+  it('index by getDay(), Sunday first', () => {
+    expect(DAY_LABELS).toHaveLength(7);
+    expect(DAY_LABELS_SHORT).toHaveLength(7);
+    expect(DAY_LABELS[0]).toBe('Sun');
+    expect(DAY_LABELS[6]).toBe('Sat');
+    // 7 September 2026 is a Monday.
+    expect(DAY_LABELS[fromDateKey('2026-09-07').getDay()]).toBe('Mon');
+  });
+
+  it('abbreviate to the first letter of the long label', () => {
+    DAY_LABELS.forEach((label, i) => {
+      expect(DAY_LABELS_SHORT[i]).toBe(label[0]);
+    });
+  });
+
+  it('offer the day toggles Monday first, covering every day exactly once', () => {
+    expect(WEEK_ORDER).toEqual([1, 2, 3, 4, 5, 6, 0]);
+    expect(new Set(WEEK_ORDER).size).toBe(7);
+    expect([...WEEK_ORDER].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+});
+
+describe('todayKey and nowIso', () => {
+  it('give today as a key that fromDateKey reads back', () => {
+    const key = todayKey();
+    expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(toDateKey(fromDateKey(key))).toBe(key);
+    expect(key).toBe(toDateKey(new Date()));
+  });
+
+  it('stamp the moment in UTC ISO, which is what the rows store', () => {
+    const iso = nowIso();
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(Math.abs(Date.parse(iso) - Date.now())).toBeLessThan(5_000);
   });
 });

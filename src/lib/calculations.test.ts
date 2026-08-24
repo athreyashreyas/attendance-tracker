@@ -508,3 +508,147 @@ describe('runaway date ranges', () => {
     ).toEqual([]);
   });
 });
+
+describe('computeAttendanceStats — the thresholds at their extremes', () => {
+  const sessionsOf = (present: number, absent: number) =>
+    makeSessions('c', [
+      ...Array.from({ length: present }, (_, i): [string, SessionStatus] => [d(i + 1), 'present']),
+      ...Array.from({ length: absent }, (_, i): [string, SessionStatus] => [
+        d(present + i + 1),
+        'absent',
+      ]),
+    ]);
+
+  it('lets you miss as many as you like when nothing is required', () => {
+    const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: 0 }), sessionsOf(1, 5));
+    expect(stats.canMissMore).toBe(Number.POSITIVE_INFINITY);
+    expect(stats.isAtRisk).toBe(false);
+    expect(stats.needToAttend).toBe(0);
+  });
+
+  it('says a perfect record is unrecoverable once one class is missed at 100%', () => {
+    const perfect = computeAttendanceStats(makeCourse({ min_attendance_pct: 100 }), sessionsOf(5, 0));
+    expect(perfect.canMissMore).toBe(0);
+    expect(perfect.isAtRisk).toBe(false);
+
+    const slipped = computeAttendanceStats(makeCourse({ min_attendance_pct: 100 }), sessionsOf(5, 1));
+    expect(slipped.isAtRisk).toBe(true);
+    // No number of future classes brings 5/6 back to 100%.
+    expect(slipped.needToAttend).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('asks for nothing more once the threshold is already held', () => {
+    const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: 75 }), sessionsOf(9, 1));
+    expect(stats.percentage).toBe(90);
+    expect(stats.needToAttend).toBe(0);
+    expect(stats.isAtRisk).toBe(false);
+  });
+
+  it('asks for exactly enough classes to climb back to the line', () => {
+    // 5 of 10 at 75%: attending 10 straight gives 15/20 = 75% exactly.
+    const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: 75 }), sessionsOf(5, 5));
+    expect(stats.needToAttend).toBe(10);
+
+    const recovered = computeAttendanceStats(
+      makeCourse({ min_attendance_pct: 75 }),
+      sessionsOf(15, 5)
+    );
+    expect(recovered.percentage).toBe(75);
+    expect(recovered.isAtRisk).toBe(false);
+  });
+
+  it('is never at risk with no record at all, at any threshold', () => {
+    // No record is not the same as a bad record. `needToAttend` is not asserted
+    // here: with nothing recorded there is no shortfall to make up, and the
+    // figure it computes (-0 at most thresholds, Infinity at 100%) is only ever
+    // read behind isAtRisk, which is false.
+    for (const pct of [0, 75, 100]) {
+      const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: pct }), []);
+      expect(stats.isAtRisk).toBe(false);
+      expect(stats.canMissMore).toBe(0);
+      expect(stats.total).toBe(0);
+      expect(stats.percentage).toBe(0);
+    }
+  });
+
+  it('never reports a negative allowance, however far behind the record is', () => {
+    const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: 90 }), sessionsOf(1, 9));
+    expect(stats.canMissMore).toBe(0);
+    expect(stats.isAtRisk).toBe(true);
+  });
+
+  it('rounds the percentage to one place, the way the ring reads it', () => {
+    const stats = computeAttendanceStats(makeCourse({ min_attendance_pct: 75 }), sessionsOf(2, 1));
+    expect(stats.percentage).toBe(66.7); // 66.666… , not 66.7000000001
+    expect(computeAttendanceStats(makeCourse(), sessionsOf(1, 2)).percentage).toBe(33.3);
+  });
+
+  it('carries the threshold and the course id back out, for the row that renders it', () => {
+    const course = makeCourse({ min_attendance_pct: 80 });
+    const stats = computeAttendanceStats(course, sessionsOf(4, 1));
+    expect(stats.courseId).toBe(course.id);
+    expect(stats.threshold).toBe(80);
+  });
+
+  it('holds its own arithmetic together: present + absent is the total', () => {
+    for (const [p, a] of [[0, 0], [3, 0], [0, 3], [7, 5]] as const) {
+      const stats = computeAttendanceStats(makeCourse(), sessionsOf(p, a));
+      expect(stats.total).toBe(stats.present + stats.absent);
+      if (stats.total > 0) {
+        expect(stats.percentage).toBeCloseTo(Math.round((p / stats.total) * 1000) / 10, 10);
+      }
+    }
+  });
+});
+
+describe('classesOnDate', () => {
+  const course = makeCourse({
+    schedule_days: [MON, WED],
+    sessions_per_day: { [MON]: 2 },
+  });
+
+  it('gives the weekday its own count', () => {
+    expect(classesOnDate(course, d(7))).toBe(2); // Monday, meets twice
+    expect(classesOnDate(course, d(9))).toBe(1); // Wednesday, once
+  });
+
+  it('is zero on a weekday the class does not meet', () => {
+    expect(classesOnDate(course, d(8))).toBe(0); // Tuesday
+  });
+
+  it('takes the whole day off, both halves of a double', () => {
+    const withHoliday = makeCourse({
+      schedule_days: [MON],
+      sessions_per_day: { [MON]: 2 },
+      excluded_dates: [d(14)],
+    });
+    expect(classesOnDate(withHoliday, d(7))).toBe(2);
+    expect(classesOnDate(withHoliday, d(14))).toBe(0);
+  });
+
+  it('treats a row written before the columns existed as meeting once', () => {
+    const legacy = makeCourse({ schedule_days: [MON] });
+    delete (legacy as { sessions_per_day?: unknown }).sessions_per_day;
+    delete (legacy as { excluded_dates?: unknown }).excluded_dates;
+    expect(classesOnDate(legacy, d(7))).toBe(1);
+    expect(daysOff(legacy)).toEqual([]);
+    expect(isDayOff(legacy, d(7))).toBe(false);
+  });
+
+  it('clamps a count that could not be a real timetable', () => {
+    const absurd = makeCourse({ schedule_days: [MON], sessions_per_day: { [MON]: 99 } });
+    expect(classesOnDate(absurd, d(7))).toBe(6); // MAX_CLASSES_PER_DAY
+    const nonsense = makeCourse({
+      schedule_days: [MON],
+      sessions_per_day: { [MON]: 0 } as unknown as Course['sessions_per_day'],
+    });
+    expect(classesOnDate(nonsense, d(7))).toBe(1);
+  });
+
+  it('reads the date locally, so a class never lands on the wrong weekday', () => {
+    // 7 September 2026 is a Monday everywhere the app runs; parsing the key as
+    // UTC would make it a Sunday west of Greenwich.
+    expect(date(d(7)).getDay()).toBe(MON);
+    expect(classesOnDate(makeCourse({ schedule_days: [MON] }), d(7))).toBe(1);
+  });
+});
