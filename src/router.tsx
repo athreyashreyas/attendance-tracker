@@ -21,16 +21,19 @@ function Splash() {
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { session, isLoading } = useAuth();
+  const { userId, isLoading } = useAuth();
   if (isLoading) return <Splash />;
-  if (!session) return <Navigate to="/auth" replace />;
+  // userId covers a boot that could not reach auth but knows this device was
+  // signed in: the app opens on local data rather than sending someone to a
+  // sign-in form that cannot succeed while the server is unreachable.
+  if (!userId) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
 
 function RootRedirect() {
-  const { session, isLoading } = useAuth();
+  const { userId, isLoading } = useAuth();
   if (isLoading) return <Splash />;
-  return <Navigate to={session ? '/dashboard' : '/auth'} replace />;
+  return <Navigate to={userId ? '/dashboard' : '/auth'} replace />;
 }
 
 export const router = createHashRouter([

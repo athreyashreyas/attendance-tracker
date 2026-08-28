@@ -5,7 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import { MotionConfig } from 'framer-motion';
 import { queryClient } from './lib/queryClient';
 import { router } from './router';
-import { initAuth, useAuthStore } from './stores/authStore';
+import { initAuth, selectUserId, useAuthStore } from './stores/authStore';
 import { syncEngine } from './lib/sync';
 import { startFeedbackOutbox } from './lib/feedbackOutbox';
 import { useRealtime } from './hooks/useRealtime';
@@ -14,7 +14,7 @@ import { QuotaToast } from './components/ui/QuotaToast';
 import { UpdateOverlay } from './components/ui/UpdateOverlay';
 
 function AppInner() {
-  const userId = useAuthStore((s) => s.session?.user?.id ?? null);
+  const userId = useAuthStore(selectUserId);
 
   useViewport();
 
