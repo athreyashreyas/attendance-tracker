@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAllCourses } from './useCourses';
-import { useAllSessions } from './useSessions';
+import { useSessionsOnDate } from './useSessions';
 import { useSemesters } from './useSemesters';
 import { classesOnDay } from '../lib/calculations';
 import { isCourseArchived } from '../lib/archive';
@@ -39,10 +39,11 @@ export interface TodayMarking {
  */
 export function useTodayMarking(): TodayMarking {
   const { data: courses, isLoading: coursesLoading } = useAllCourses();
-  const { data: allSessions, isLoading: sessionsLoading } = useAllSessions();
   const { data: semesters } = useSemesters();
 
   const today = todayKey();
+  // Only today's rows are ever read below, so ask Dexie for exactly those.
+  const { data: todaySessions, isLoading: sessionsLoading } = useSessionsOnDate(today);
 
   return useMemo(() => {
     const semesterById = new Map((semesters ?? []).map((s) => [s.id, s]));
@@ -50,8 +51,7 @@ export function useTodayMarking(): TodayMarking {
     // Today's sessions, by course. A session already on today pulls its class
     // into the deck even when today isn't one of its recurring days.
     const todayByCourse = new Map<string, Session[]>();
-    for (const s of allSessions ?? []) {
-      if (s.scheduled_date !== today) continue;
+    for (const s of todaySessions ?? []) {
       const list = todayByCourse.get(s.course_id) ?? [];
       list.push(s);
       todayByCourse.set(s.course_id, list);
@@ -95,5 +95,5 @@ export function useTodayMarking(): TodayMarking {
       toMark,
       isLoading: coursesLoading || sessionsLoading,
     };
-  }, [courses, allSessions, semesters, today, coursesLoading, sessionsLoading]);
+  }, [courses, todaySessions, semesters, today, coursesLoading, sessionsLoading]);
 }

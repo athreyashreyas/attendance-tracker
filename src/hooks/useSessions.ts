@@ -35,6 +35,32 @@ export function useAllSessions() {
   });
 }
 
+/**
+ * Every non-deleted session on one date, read through the scheduled_date index.
+ *
+ * The day's classes used to come from useAllSessions, which walks the whole
+ * sessions table in JS to keep the handful that fall on today. That runs on the
+ * dashboard and on every mark, and the table grows for the life of the account,
+ * so the cost climbs all term for a result that never gets bigger. The index is
+ * already there; this uses it.
+ *
+ * Keyed under 'sessions' so the existing invalidations, which match on that
+ * prefix, refresh it without needing to know about it.
+ */
+export async function loadSessionsOnDate(dateKey: string): Promise<Session[]> {
+  const rows = await db.sessions.where('scheduled_date').equals(dateKey).toArray();
+  // A tombstone stays in Dexie until the next pull prunes it; the day's set is
+  // small, so this filter is cheap where the table-wide one was not.
+  return rows.filter((s) => !s.deleted_at);
+}
+
+export function useSessionsOnDate(dateKey: string) {
+  return useQuery({
+    queryKey: ['sessions', 'onDate', dateKey],
+    queryFn: () => loadSessionsOnDate(dateKey),
+  });
+}
+
 /** Every non-deleted session a course has on a date, first class of the day first. */
 export async function sessionsOnDate(
   courseId: string,
