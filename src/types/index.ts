@@ -5,6 +5,23 @@ export type ScheduleDay = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday
 // How many classes a weekday holds, for the days that hold more than one (a
 // double lecture, a lab that runs two periods). Days left out hold exactly one.
 export type ClassesPerDay = Partial<Record<ScheduleDay, number>>;
+
+/**
+ * One timetable, and the date it took over. A class keeps a list of these, so a
+ * timetable that changes partway through a term doesn't rewrite the weeks that
+ * ran under the old one.
+ */
+export interface SchedulePeriod {
+  /**
+   * The first day this timetable applies, 'YYYY-MM-DD'. Null on the opening
+   * one, which covers everything up to the first change.
+   */
+  effective_from: string | null;
+  days: ScheduleDay[];
+  /** Only the days that meet more than once, exactly as on the course. */
+  sessions_per_day: ClassesPerDay;
+}
+
 export type TableName = 'semesters' | 'courses' | 'sessions';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
 
@@ -28,10 +45,17 @@ export interface Course {
   semester_id: string | null; // null = a standalone class, not tied to a semester
   name: string;
   color: string; // hex color
+  // The timetable running now. It mirrors the newest entry of schedule_history
+  // so that a build of the app that predates the timeline still reads a class's
+  // current days correctly; the timeline is what the app itself reads.
   schedule_days: ScheduleDay[];
   // Only the days that meet more than once appear here, so a class with one
   // lecture a day carries an empty object, exactly as it always did.
   sessions_per_day: ClassesPerDay;
+  // The class's timetable over time, oldest first: the opening timetable, then
+  // one entry per change. Empty on a class that has never changed its days,
+  // which is every class synced before this existed. See lib/schedule.ts.
+  schedule_history: SchedulePeriod[];
   min_attendance_pct: number;
   start_date: string | null; // 'YYYY-MM-DD'; null falls back to the semester
   end_date: string | null;

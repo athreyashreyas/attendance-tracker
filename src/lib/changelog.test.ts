@@ -18,6 +18,7 @@ const ART_KINDS = new Set<GuideArtKind>([
   'ring',
   'schedule',
   'double',
+  'timetable',
   'mark',
   'calendar',
   'daysoff',

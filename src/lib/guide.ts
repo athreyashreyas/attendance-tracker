@@ -9,6 +9,7 @@ export type GuideArtKind =
   | 'ring'
   | 'schedule'
   | 'double'
+  | 'timetable'
   | 'mark'
   | 'calendar'
   | 'daysoff'
@@ -65,6 +66,21 @@ export const GUIDE: GuideSection[] = [
       'Marking asks for each one in turn: the 1st of 2, then the 2nd.',
     ],
     art: 'double',
+  },
+  {
+    id: 'timetable-changes',
+    title: 'When the timetable changes',
+    body: [
+      'A class does not always keep the days it started with. A lecture moves to another day in week six, a lab swaps its slot after the mid-term. When yours moves, set the new days and tell Attend the date they started: the weeks before it keep the days they actually ran on, and everything you marked on them stays exactly as it is.',
+      'The class page then carries a Timetable section, reading back the days the class ran on stretch by stretch, with the one running now marked. The calendar, the marking deck and the term count all follow the timetable that was in force on each date, so a month from before the change still shows the old days.',
+      'If the days were simply entered wrongly to begin with, say so instead and the correction applies to the whole term.',
+    ],
+    steps: [
+      'Open the class, tap Edit, and set the new class days.',
+      'Choose "Save the change" and pick the date the new timetable started.',
+      'To put right a stretch that has already passed, tap it in the list above the day buttons.',
+    ],
+    art: 'timetable',
   },
   {
     id: 'marking',

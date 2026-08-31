@@ -4,8 +4,13 @@ import { syncEngine } from '../lib/sync';
 import { useAuthStore } from '../stores/authStore';
 import { toRemote } from '../utils/records';
 import { nowIso } from '../utils/dates';
-import { normalizeCount } from '../lib/slots';
-import type { ClassesPerDay, Course, ScheduleDay } from '../types';
+import { scheduleFields } from '../lib/schedule';
+import type {
+  ClassesPerDay,
+  Course,
+  ScheduleDay,
+  SchedulePeriod,
+} from '../types';
 
 async function loadAllCourses(): Promise<Course[]> {
   const courses = await db.courses.filter((c) => !c.deleted_at).toArray();
@@ -36,27 +41,15 @@ export interface CourseInput {
   color: string;
   schedule_days: ScheduleDay[];
   sessions_per_day?: ClassesPerDay;
+  /**
+   * The class's timetable over time. Left out by a caller that has only one
+   * timetable to give, which is then the whole timeline.
+   */
+  schedule_history?: SchedulePeriod[];
   min_attendance_pct: number;
   start_date?: string | null;
   end_date?: string | null;
   excluded_dates?: string[];
-}
-
-/**
- * Keep only the days that genuinely meet more than once, and only days the
- * class actually runs on. A day dropped from the schedule shouldn't leave a
- * count behind to surprise anyone who adds it back later.
- */
-function tidyPerDay(
-  perDay: ClassesPerDay | undefined,
-  scheduleDays: ScheduleDay[]
-): ClassesPerDay {
-  const out: ClassesPerDay = {};
-  for (const day of scheduleDays) {
-    const count = normalizeCount(perDay?.[day] ?? 1);
-    if (count > 1) out[day] = count;
-  }
-  return out;
 }
 
 export function useCourseMutations() {
@@ -72,14 +65,21 @@ export function useCourseMutations() {
 
     const existing = input.id ? await db.courses.get(input.id) : undefined;
     const now = nowIso();
+    // The timeline is the truth; schedule_days and sessions_per_day mirror its
+    // newest entry, so a build of the app that predates the timeline still
+    // reads and shows the timetable the class is running now.
+    const schedule = scheduleFields(
+      input.schedule_days,
+      input.sessions_per_day,
+      input.schedule_history
+    );
     const course: Course = {
       id: input.id ?? crypto.randomUUID(),
       user_id: userId,
       semester_id: input.semester_id ?? null,
       name: input.name.trim(),
       color: input.color,
-      schedule_days: input.schedule_days,
-      sessions_per_day: tidyPerDay(input.sessions_per_day, input.schedule_days),
+      ...schedule,
       min_attendance_pct: input.min_attendance_pct,
       start_date: input.start_date ?? null,
       end_date: input.end_date ?? null,

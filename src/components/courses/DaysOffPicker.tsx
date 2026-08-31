@@ -11,13 +11,18 @@ import {
 import { CalendarRange, Hand, RotateCcw } from 'lucide-react';
 import { toDateKey, fromDateKey, DAY_LABELS_SHORT } from '../../utils/dates';
 import { hexToRgba } from '../../lib/colors';
-import type { ScheduleDay } from '../../types';
+import { classesOnDateIn } from '../../lib/schedule';
+import type { SchedulePeriod } from '../../types';
 
 type Mode = 'single' | 'range';
 
 interface DaysOffPickerProps {
-  /** Weekdays the class runs on. */
-  scheduleDays: ScheduleDay[];
+  /**
+   * The class's timetable over time. A term whose days moved partway through
+   * offers the days it actually ran on either side of the change, rather than
+   * the newest timetable's days for the whole term.
+   */
+  periods: SchedulePeriod[];
   /** First and last class, 'YYYY-MM-DD'. */
   start: string;
   end: string;
@@ -34,7 +39,7 @@ interface DaysOffPickerProps {
  * for orientation, so a date can be found the way it appears on a wall planner.
  */
 export function DaysOffPicker({
-  scheduleDays,
+  periods,
   start,
   end,
   value,
@@ -68,11 +73,7 @@ export function DaysOffPicker({
 
   function isClassDay(day: Date): boolean {
     const key = toDateKey(day);
-    return (
-      key >= start &&
-      key <= end &&
-      scheduleDays.includes(day.getDay() as ScheduleDay)
-    );
+    return key >= start && key <= end && classesOnDateIn(periods, key) > 0;
   }
 
   function classDaysBetween(a: string, b: string): string[] {
@@ -112,7 +113,7 @@ export function DaysOffPicker({
   const pending = useMemo(() => {
     if (mode !== 'range' || !anchor) return new Set<string>();
     return new Set(hovered ? classDaysBetween(anchor, hovered) : [anchor]);
-  }, [mode, anchor, hovered, value, start, end, scheduleDays]);
+  }, [mode, anchor, hovered, value, start, end, periods]);
 
   if (months.length === 0) {
     return (
@@ -123,7 +124,7 @@ export function DaysOffPicker({
     );
   }
 
-  if (scheduleDays.length === 0) {
+  if (periods.every((p) => p.days.length === 0)) {
     return (
       <p className="rounded-card bg-parchment-200 px-3.5 py-3 font-sans text-sm text-ink-500">
         Pick your class days above, and you can then take individual days out of

@@ -94,6 +94,58 @@ export function GuideArt({ kind }: { kind: GuideArtKind }) {
         </div>
       );
 
+    // A timetable that moved partway through the term: the days it ran on
+    // before the change, and the days it runs on now, one above the other.
+    case 'timetable':
+      return (
+        <div className="w-full max-w-[250px]">
+          {[
+            { days: ['Mo', 'We'], span: 'Until 14 Sep', now: false },
+            { days: ['Tu', 'Th'], span: 'From 15 Sep', now: true },
+          ].map((row, i) => (
+            <div key={row.span} className="flex gap-3">
+              <div className="flex w-3 shrink-0 flex-col items-center pt-3">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: row.now ? PLUM : `${PLUM}4D` }}
+                />
+                {i === 0 && (
+                  <span
+                    className="mt-1 w-px flex-1"
+                    style={{ backgroundColor: `${PLUM}40` }}
+                  />
+                )}
+              </div>
+              <div className={`min-w-0 flex-1 ${i === 0 ? 'pb-3' : ''}`}>
+                <div className="flex gap-1.5">
+                  {['Mo', 'Tu', 'We', 'Th', 'Fr'].map((d) => {
+                    const on = row.days.includes(d);
+                    return (
+                      <span
+                        key={d}
+                        className={`flex h-8 flex-1 items-center justify-center rounded-lg font-sans text-[11px] font-medium ${
+                          on
+                            ? row.now
+                              ? 'bg-sage-500 text-white'
+                              : 'bg-sage-400/50 text-white'
+                            : 'bg-parchment-200 text-ink-300'
+                        }`}
+                      >
+                        {d}
+                      </span>
+                    );
+                  })}
+                </div>
+                <p className="mt-1.5 font-sans text-[11px] text-ink-500">
+                  {row.span}
+                  {row.now && ' · now'}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
     // A weekday that holds the class twice, and the two classes it becomes.
     case 'double':
       return (

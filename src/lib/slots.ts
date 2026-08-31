@@ -1,4 +1,4 @@
-import type { Course, ScheduleDay, Session } from '../types';
+import type { Session } from '../types';
 
 /**
  * A weekday can hold more than one class: a double lecture, a lab that runs two
@@ -6,9 +6,12 @@ import type { Course, ScheduleDay, Session } from '../types';
  * is its own class with its own attendance, so they're numbered within the day —
  * that number is the slot, counting from 1.
  *
- * Everything here tolerates rows written before slots existed: a session with no
- * slot is the first class of its day, and a course with no per-day counts meets
- * once on each of its days.
+ * Everything here tolerates rows written before slots existed: a session with
+ * no slot is the first class of its day.
+ *
+ * How many classes a given day holds is a question for the class's timetable,
+ * which can change partway through a term, so it lives in lib/schedule.ts
+ * alongside the timeline that answers it.
  */
 
 /** Beyond this a day stops being a timetable and starts being a mistake. */
@@ -25,15 +28,6 @@ export function normalizeCount(value: unknown): number {
   const n = Math.floor(Number(value));
   if (!Number.isFinite(n) || n <= 1) return 1;
   return Math.min(n, MAX_CLASSES_PER_DAY);
-}
-
-/**
- * How many classes this course holds on a given weekday: 0 when it doesn't meet
- * that day at all. Days off aren't considered here — see classesOnDate.
- */
-export function classesOnWeekday(course: Course, day: ScheduleDay): number {
-  if (!course.schedule_days.includes(day)) return 0;
-  return normalizeCount(course.sessions_per_day?.[day] ?? 1);
 }
 
 /** "1st", "2nd", "3rd"… for naming one class within its day. */

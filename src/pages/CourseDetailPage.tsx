@@ -11,6 +11,7 @@ import { SessionItem } from '../components/sessions/SessionItem';
 import { SessionForm } from '../components/sessions/SessionForm';
 import { CourseForm } from '../components/courses/CourseForm';
 import { TermSummary } from '../components/courses/TermSummary';
+import { ScheduleTimeline } from '../components/courses/ScheduleTimeline';
 import { AttendanceHeatmap } from '../components/calendar/AttendanceHeatmap';
 import { useCourse } from '../hooks/useCourses';
 import { useSessions } from '../hooks/useSessions';
@@ -180,6 +181,9 @@ export function CourseDetailPage() {
           color={course.color}
         />
       )}
+
+      {/* The timetable over time, for a class whose days have moved */}
+      <ScheduleTimeline course={course} semester={semester} />
 
       {/* Session list */}
       <div className="mt-6">

@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_CLASSES_PER_DAY,
-  classesOnWeekday,
   normalizeCount,
   ordinal,
   slotLabel,
   slotOf,
 } from './slots';
-import { makeCourse, makeSession } from './test-factories';
-import type { ScheduleDay, Session } from '../types';
+import { makeSession } from './test-factories';
+import type { Session } from '../types';
 
 describe('slotOf', () => {
   it('reads the slot a session was recorded in', () => {
@@ -49,42 +48,6 @@ describe('normalizeCount', () => {
     expect(normalizeCount(2)).toBe(2);
     expect(normalizeCount('3')).toBe(3);
     expect(normalizeCount(99)).toBe(MAX_CLASSES_PER_DAY);
-  });
-});
-
-describe('classesOnWeekday', () => {
-  const monday = 1 as ScheduleDay;
-  const tuesday = 2 as ScheduleDay;
-
-  it('holds nothing on a day the class does not meet', () => {
-    expect(classesOnWeekday(makeCourse({ schedule_days: [monday] }), tuesday)).toBe(0);
-  });
-
-  it('holds one class on a scheduled day by default', () => {
-    expect(classesOnWeekday(makeCourse({ schedule_days: [monday] }), monday)).toBe(1);
-  });
-
-  it('holds as many as that weekday is set to', () => {
-    const course = makeCourse({
-      schedule_days: [monday, tuesday],
-      sessions_per_day: { 2: 3 },
-    });
-    expect(classesOnWeekday(course, tuesday)).toBe(3);
-    expect(classesOnWeekday(course, monday)).toBe(1); // untouched days stay at one
-  });
-
-  it('ignores a count left behind on a day no longer scheduled', () => {
-    const course = makeCourse({
-      schedule_days: [monday],
-      sessions_per_day: { 2: 2 },
-    });
-    expect(classesOnWeekday(course, tuesday)).toBe(0);
-  });
-
-  it('survives a course synced before per-day counts existed', () => {
-    const course = makeCourse({ schedule_days: [monday] });
-    delete (course as { sessions_per_day?: unknown }).sessions_per_day;
-    expect(classesOnWeekday(course, monday)).toBe(1);
   });
 });
 

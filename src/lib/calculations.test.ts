@@ -7,6 +7,7 @@ import {
   computeTermProjection,
   MAX_TERM_DAYS,
   countClassDays,
+  countClassesInTimetable,
   daysOff,
   expandToClasses,
   expectedClassesInRange,
@@ -18,6 +19,7 @@ import {
   termWindow,
 } from './calculations';
 import { makeCourse, makeSemester, makeSession, makeSessions } from './test-factories';
+import { makePeriod } from './schedule';
 import { fromDateKey, toDateKey } from '../utils/dates';
 import type { Course, ScheduleDay, Session, SessionStatus } from '../types';
 
@@ -183,6 +185,100 @@ describe('generateExpectedDates', () => {
     expect(generateExpectedDates(makeCourse({ schedule_days: [] }), date(d(7)), date(d(16)))).toEqual([]);
     expect(generateExpectedDates(course, date(d(16)), date(d(7)))).toEqual([]);
     expect(generateExpectedDates(course, new Date('nonsense'), date(d(16)))).toEqual([]);
+  });
+});
+
+describe('a timetable that changes partway through the term', () => {
+  // Mon and Wed to start with; from Tuesday the 15th the class moves to Tue
+  // and Thu. The 7th, 14th, 21st, 28th are Mondays; the 8th, 15th, 22nd, 29th
+  // Tuesdays; the 9th, 16th, 23rd, 30th Wednesdays; the 10th, 17th, 24th
+  // Thursdays.
+  const TUE = 2 as ScheduleDay;
+  const THU = 4 as ScheduleDay;
+  const moved = makeCourse({
+    // The mirror is the timetable running now, as the app writes it.
+    schedule_days: [TUE, THU],
+    schedule_history: [
+      makePeriod([MON, WED]),
+      makePeriod([TUE, THU], {}, d(15)),
+    ],
+    start_date: d(1),
+    end_date: d(30),
+  });
+
+  it('expects the old days before the change and the new ones after it', () => {
+    const dates = generateExpectedDates(moved, date(d(1)), date(d(30)));
+    expect(dates.map((x) => x.getDate())).toEqual([
+      2, 7, 9, 14, // Wed, Mon, Wed, Mon: the old timetable
+      15, 17, 22, 24, 29, // Tue, Thu, Tue, Thu, Tue: the new one
+    ]);
+  });
+
+  it('counts the term as it actually ran, not as the newest timetable would have', () => {
+    const periods = [
+      makePeriod([MON, WED]),
+      makePeriod([TUE, THU], {}, d(15)),
+    ];
+    expect(countClassesInTimetable(periods, d(1), d(30), [])).toBe(9);
+    // The same span read as though the class had always met Tue and Thu.
+    expect(countClassDays([TUE, THU], d(1), d(30), [])).toBe(9);
+    // ...which is a different set of days, even where the totals agree.
+    expect(countClassesInTimetable(periods, d(1), d(14), [])).toBe(4);
+    expect(countClassDays([TUE, THU], d(1), d(14), [])).toBe(4);
+    expect(countClassesInTimetable(periods, d(7), d(9), [])).toBe(2); // Mon, Wed
+    expect(countClassDays([TUE, THU], d(7), d(9), [])).toBe(1); // Thu only
+  });
+
+  it('still takes days off out, whichever timetable they fall under', () => {
+    const periods = [makePeriod([MON, WED]), makePeriod([TUE, THU], {}, d(15))];
+    expect(countClassesInTimetable(periods, d(1), d(30), [d(7), d(22)])).toBe(7);
+  });
+
+  it('holds the old days on old dates and the new days on new ones', () => {
+    expect(classesOnDate(moved, d(7))).toBe(1); // a Monday, before the change
+    expect(classesOnDate(moved, d(8))).toBe(0); // a Tuesday, before it
+    expect(classesOnDate(moved, d(21))).toBe(0); // a Monday, after it
+    expect(classesOnDate(moved, d(22))).toBe(1); // a Tuesday, after it
+  });
+
+  it('keeps the classes that ran under the old timetable on the day grid', () => {
+    const session = makeSession(moved.id, d(7), 'present');
+    const [held] = classesOnDay(moved, d(7), [session]);
+    expect(held.scheduled).toBe(true);
+    // And a Monday after the change is no longer a class day, though anything
+    // recorded on it stays readable.
+    expect(classesOnDay(moved, d(21), [])).toEqual([]);
+  });
+
+  it('counts only what is still to come under the timetable in force', () => {
+    // Standing on the 15th, the day the new timetable takes over: the 15th,
+    // 17th, 22nd, 24th and 29th are still to come.
+    const proj = computeTermProjection(moved, [], d(1), d(30), d(15));
+    expect(proj.remaining).toBe(5);
+  });
+
+  it('reads a change in how often a day meets, not only which days', () => {
+    const doubled = makeCourse({
+      schedule_days: [MON],
+      sessions_per_day: { [MON]: 2 },
+      schedule_history: [
+        makePeriod([MON]),
+        makePeriod([MON], { [MON]: 2 }, d(15)),
+      ],
+    });
+    expect(classesOnDate(doubled, d(7))).toBe(1);
+    expect(classesOnDate(doubled, d(21))).toBe(2);
+    expect(
+      expandToClasses(doubled, [date(d(7)), date(d(21))]).map(
+        (c) => `${c.date}#${c.slot}`
+      )
+    ).toEqual([`${d(7)}#1`, `${d(21)}#1`, `${d(21)}#2`]);
+  });
+
+  it('falls back to the class\'s own days when it has no timeline at all', () => {
+    const plain = makeCourse({ schedule_days: [MON, WED] });
+    expect(classesOnDate(plain, d(7))).toBe(1);
+    expect(generateExpectedDates(plain, date(d(7)), date(d(16)))).toHaveLength(4);
   });
 });
 

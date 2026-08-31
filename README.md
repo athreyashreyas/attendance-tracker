@@ -42,6 +42,8 @@ TanStack Query, Zustand, and Supabase.
 **Your classes, your way**
 - Optional semesters: link a class to one, or let it stand alone.
 - Per-class schedule days, start and end dates, and a custom attendance threshold.
+- A timetable that can change mid-term: give the date the days moved, and the weeks
+  before it keep the days they actually ran on.
 - 16 muted, distinct colours so every class is easy to tell apart.
 
 **Attendance intelligence**
@@ -106,12 +108,15 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 Open the Supabase SQL editor and run [`supabase/schema.sql`](supabase/schema.sql)
 top to bottom. It creates the tables, row-level security policies, the `updated_at`
-and audit-log triggers, and adds the tables to the realtime publication. This file is
-the full, current schema, so a fresh project needs nothing else.
+and audit-log triggers, and adds the tables to the realtime publication.
 
-> Upgrading an existing deployment instead of starting fresh? Apply the numbered
-> files in [`supabase/`](supabase/) in order (`migration-002`, `migration-004`,
-> `migration-005`). They are incremental and already folded into `schema.sql`.
+Then run each numbered `migration-*.sql` in [`supabase/`](supabase/) in order. They
+add the columns and indexes that came after the base schema, and each one records
+itself in `public.schema_migrations`, which is where to look to see what a database
+has had applied. There is no migration 003; the gap is harmless.
+
+> Upgrading an existing deployment? Run only the migrations it has not had yet, in
+> order, and check `schema_migrations` afterwards.
 
 ### 4. Run
 

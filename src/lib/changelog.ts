@@ -31,6 +31,25 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.10.0',
+    date: '2026-08-31',
+    major: true,
+    title: 'A timetable that can change mid-term',
+    notes: [
+      'Timetables move. A lecture shifts to another day in week six, a lab swaps its slot after the mid-term. Until now, changing a class\'s days rewrote the whole term, and the weeks that had already run quietly changed with them.',
+      'Now Attend asks one question when you change the days of a class that has a term behind it: did the timetable change, or was it wrong all along? Say it changed, give the date it started, and everything before that keeps the days it actually ran on.',
+      'A class whose days have moved carries a Timetable section on its page: the days it ran on, stretch by stretch, with the one running now marked. It is a record of the term as it happened rather than as it ended up.',
+      'The calendar, the marking deck, the overview grid, the days-off picker and the term projection all read the timetable that was in force on each date. Last month still shows last month.',
+      'You can edit a stretch that has already passed, undo a change recorded by mistake, and set a change for a date still to come. Nothing you have already marked is touched by any of it.',
+    ],
+    howTo: [
+      'Open a class, tap the pencil, and set its new class days.',
+      'Choose "Save the change" and pick the date the new timetable started.',
+      'The class page then shows Timetable, listing the days it ran on and when they moved.',
+    ],
+    art: ['timetable'],
+  },
+  {
     version: '0.9.0',
     date: '2026-08-16',
     major: true,

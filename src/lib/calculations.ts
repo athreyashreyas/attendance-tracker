@@ -4,11 +4,20 @@ import type {
   ClassesPerDay,
   Course,
   ScheduleDay,
+  SchedulePeriod,
   Semester,
   TermProjection,
 } from '../types';
 import { format } from 'date-fns';
-import { classesOnWeekday, normalizeCount, slotOf } from './slots';
+import { slotOf } from './slots';
+import {
+  classesOnDateIn,
+  classesOnWeekdayIn,
+  makePeriod,
+  periodOn,
+  schedulePeriods,
+  timetableHoldsClass,
+} from './schedule';
 
 /**
  * Core attendance percentage and threshold calculations.
@@ -158,13 +167,13 @@ export function isDayOff(course: Course, dateKey: string): boolean {
 
 /**
  * How many classes this course holds on a particular date: none when the date
- * isn't one of its days or has been taken off, otherwise however many that
- * weekday holds. A day off takes the whole day, both halves of a double.
+ * isn't one of its days or has been taken off, otherwise however many the
+ * timetable in force that day holds. A day off takes the whole day, both
+ * halves of a double.
  */
 export function classesOnDate(course: Course, dateKey: string): number {
   if (isDayOff(course, dateKey)) return 0;
-  const day = new Date(`${dateKey}T00:00:00`).getDay() as ScheduleDay;
-  return classesOnWeekday(course, day);
+  return classesOnDateIn(schedulePeriods(course), dateKey);
 }
 
 /**
@@ -194,9 +203,11 @@ export function isWithinTerm(
 }
 
 /**
- * Whether a schedule holds a particular class of a particular day. Takes the
+ * Whether one timetable holds a particular class of a particular day. Takes the
  * parts rather than a course, so the class form can ask it of the settings
- * being edited, before anything is saved.
+ * being edited, before anything is saved. For a class whose timetable has
+ * changed partway through, ask timetableHoldsClass of the whole timeline
+ * instead: this one knows nothing about dates.
  */
 export function scheduleHoldsClass(
   scheduleDays: ScheduleDay[],
@@ -205,10 +216,12 @@ export function scheduleHoldsClass(
   dateKey: string,
   slot: number
 ): boolean {
-  if (excluded.includes(dateKey)) return false;
-  const day = new Date(`${dateKey}T00:00:00`).getDay() as ScheduleDay;
-  if (!scheduleDays.includes(day)) return false;
-  return slot <= normalizeCount(perDay[day] ?? 1);
+  return timetableHoldsClass(
+    [makePeriod(scheduleDays, perDay)],
+    excluded,
+    dateKey,
+    slot
+  );
 }
 
 /** One class of a particular day, recorded or not. */
@@ -271,12 +284,20 @@ export interface ExpectedClass {
   total: number; // classes that day, so a slot can be named "2nd of 2"
 }
 
-/** Expand a list of class dates into the individual classes they hold. */
+/**
+ * Expand a list of class dates into the individual classes they hold. Each date
+ * is read against the timetable that was in force on it, so a term whose days
+ * moved expands into what actually ran on either side of the change.
+ */
 export function expandToClasses(course: Course, dates: Date[]): ExpectedClass[] {
+  const periods = schedulePeriods(course);
   const out: ExpectedClass[] = [];
   for (const d of dates) {
     const date = format(d, 'yyyy-MM-dd');
-    const total = classesOnWeekday(course, d.getDay() as ScheduleDay);
+    const total = classesOnWeekdayIn(
+      periodOn(periods, date),
+      d.getDay() as ScheduleDay
+    );
     for (let slot = 1; slot <= total; slot++) out.push({ date, slot, total });
   }
   return out;
@@ -300,8 +321,9 @@ function spanInDays(start: Date, end: Date): number {
 }
 
 /**
- * Generate expected session dates for a course between two dates, based on its
- * schedule_days array and minus its days off. Returns [] for an invalid range,
+ * Generate expected session dates for a course between two dates, reading each
+ * date against the timetable in force on it and minus its days off. Returns []
+ * for an invalid range,
  * which includes a span longer than MAX_TERM_DAYS.
  */
 export function generateExpectedDates(
@@ -310,10 +332,11 @@ export function generateExpectedDates(
   endDate: Date
 ): Date[] {
   const dates: Date[] = [];
+  const periods = schedulePeriods(course);
   if (
     Number.isNaN(startDate.getTime()) ||
     Number.isNaN(endDate.getTime()) ||
-    course.schedule_days.length === 0 ||
+    periods.every((p) => p.days.length === 0) ||
     spanInDays(startDate, endDate) > MAX_TERM_DAYS
   ) {
     return dates;
@@ -324,9 +347,11 @@ export function generateExpectedDates(
   const end = new Date(endDate);
   end.setHours(0, 0, 0, 0);
   while (current <= end) {
+    const key = format(current, 'yyyy-MM-dd');
+    // The timetable that was in force on this date, not the one running now.
     if (
-      course.schedule_days.includes(current.getDay() as ScheduleDay) &&
-      !off.has(format(current, 'yyyy-MM-dd'))
+      periodOn(periods, key).days.includes(current.getDay() as ScheduleDay) &&
+      !off.has(key)
     ) {
       dates.push(new Date(current));
     }
@@ -347,9 +372,29 @@ export function countClassDays(
   excluded: string[],
   perDay: ClassesPerDay = {}
 ): number {
-  if (!startKey || !endKey || endKey < startKey || scheduleDays.length === 0) {
-    return 0;
-  }
+  return countClassesInTimetable(
+    [makePeriod(scheduleDays, perDay)],
+    startKey,
+    endKey,
+    excluded
+  );
+}
+
+/**
+ * The same count for a class whose timetable changed partway through: each
+ * date is counted against the timetable that was in force on it. This is what
+ * the class form shows while a change is being made, so the total it reports
+ * is the term as it actually runs rather than the term as the newest timetable
+ * would have run it from the start.
+ */
+export function countClassesInTimetable(
+  periods: SchedulePeriod[],
+  startKey: string,
+  endKey: string,
+  excluded: string[]
+): number {
+  if (!startKey || !endKey || endKey < startKey) return 0;
+  if (periods.every((p) => p.days.length === 0)) return 0;
   const off = new Set(excluded);
   const current = new Date(`${startKey}T00:00:00`);
   const end = new Date(`${endKey}T00:00:00`);
@@ -358,9 +403,7 @@ export function countClassDays(
   while (current <= end) {
     const key = format(current, 'yyyy-MM-dd');
     const day = current.getDay() as ScheduleDay;
-    if (scheduleDays.includes(day) && !off.has(key)) {
-      count += normalizeCount(perDay[day] ?? 1);
-    }
+    if (!off.has(key)) count += classesOnWeekdayIn(periodOn(periods, key), day);
     current.setDate(current.getDate() + 1);
   }
   return count;

@@ -24,6 +24,9 @@ export function makeCourse(overrides: Partial<Course> = {}): Course {
     color: '#4F7942',
     schedule_days: [1, 3] as ScheduleDay[], // Monday and Wednesday
     sessions_per_day: {},
+    // Empty: a class whose timetable has never changed, which is how every
+    // class starts and how every class saved before timelines existed reads.
+    schedule_history: [],
     min_attendance_pct: 75,
     start_date: null,
     end_date: null,
