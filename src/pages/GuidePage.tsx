@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { GuideArt } from '../components/guide/GuideArt';
 import { ReleaseRow } from '../components/settings/ReleaseRow';
 import { APP_VERSION, CHANGELOG } from '../lib/changelog';
-import { GUIDE, type GuideSection } from '../lib/guide';
+import {
+  GUIDE_ESSENTIALS,
+  GUIDE_MORE,
+  type GuideSection,
+} from '../lib/guide';
 import { setSeenVersion } from '../lib/whatsNew';
 
 type Pane = 'new' | 'guide';
@@ -61,12 +65,12 @@ export function GuidePage() {
       </p>
       <h1 className="mt-1 font-serif text-3xl leading-tight text-ink-900">
         {firstRun.current
-          ? 'Welcome. Here is the whole of it.'
+          ? 'Welcome. Here is the short of it.'
           : 'Everything, in one read.'}
       </h1>
       <p className="mt-2 font-sans text-sm text-ink-500">
         {firstRun.current
-          ? 'A few minutes now and you will not have to wonder later. You can come back to this any time from Settings.'
+          ? 'Five short pieces and you are set up. Everything else is folded below, for whenever you want it. This page is always in Settings.'
           : 'What changed in this version, and how the app works, whenever you would like to know again.'}
       </p>
 
@@ -137,10 +141,30 @@ export function GuidePage() {
           )}
         </div>
       ) : (
-        <div className="mt-6 space-y-7">
-          {GUIDE.map((section) => (
-            <Section key={section.id} section={section} />
-          ))}
+        <div className="mt-6">
+          <div className="space-y-7">
+            {GUIDE_ESSENTIALS.map((section) => (
+              <Section key={section.id} section={section} />
+            ))}
+          </div>
+
+          {/* The rest of the app, one line each. Folded so that the read above
+              stays the whole of what anyone has to take in, however many
+              features end up down here. */}
+          <div className="mt-9 border-t border-parchment-300 pt-6">
+            <h2 className="font-serif text-2xl text-ink-900">
+              The rest of it
+            </h2>
+            <p className="mt-2 font-sans text-sm text-ink-500">
+              Nothing here is needed to get going. Open whichever you want, now
+              or the day you need it.
+            </p>
+            <div className="mt-4 space-y-2">
+              {GUIDE_MORE.map((section) => (
+                <FoldedSection key={section.id} section={section} />
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -164,8 +188,82 @@ function Section({ section }: { section: GuideSection }) {
   return (
     <section className="border-t border-parchment-300 pt-6">
       <h2 className="font-serif text-2xl text-ink-900">{section.title}</h2>
+      <SectionBody section={section} />
+    </section>
+  );
+}
+
+/** One folded section: its title and one line, until somebody wants the rest. */
+function FoldedSection({ section }: { section: GuideSection }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-card bg-parchment-50 shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 p-4 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block font-sans text-sm font-medium text-ink-900">
+            {section.title}
+          </span>
+          {section.summary && (
+            <span className="mt-0.5 block font-sans text-xs leading-relaxed text-ink-500">
+              {section.summary}
+            </span>
+          )}
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 text-ink-300"
+        >
+          <ChevronDown size={18} />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: 0.25, ease: [0.32, 0.72, 0, 1] },
+              opacity: { duration: 0.18, ease: 'easeOut' },
+            }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4">
+              <SectionBody section={section} inset />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * The parts every section shares: its demonstration, its prose, its steps.
+ * `inset` is for a section inside a folded card, where the demonstration sits
+ * within the card rather than lifting off the page.
+ */
+function SectionBody({
+  section,
+  inset = false,
+}: {
+  section: GuideSection;
+  inset?: boolean;
+}) {
+  return (
+    <>
       {section.art && (
-        <div className="mt-4 flex justify-center rounded-card bg-parchment-50 px-4 py-6 shadow-sm">
+        <div
+          className={`mt-4 flex justify-center rounded-card px-4 py-6 ${
+            inset ? 'bg-parchment-100' : 'bg-parchment-50 shadow-sm'
+          }`}
+        >
           <GuideArt kind={section.art} />
         </div>
       )}
@@ -189,6 +287,6 @@ function Section({ section }: { section: GuideSection }) {
           ))}
         </ul>
       )}
-    </section>
+    </>
   );
 }

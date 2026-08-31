@@ -23,125 +23,157 @@ export type GuideArtKind =
 export interface GuideSection {
   id: string;
   title: string;
+  /**
+   * One line saying what is inside, shown on the folded row. It is all a
+   * reader sees of a folded section, so it has to earn the tap on its own.
+   * The opening sections are already open and need none.
+   */
+  summary?: string;
   body: string[];
   /** Short, followable steps. Skip them where the prose already suffices. */
   steps?: string[];
   art?: GuideArtKind;
+  /** Part of the opening read, shown in full. See the note below. */
+  essential?: boolean;
 }
 
+/**
+ * The guide, in two parts.
+ *
+ * The first five sections are the opening read: what Attend is, setting a class
+ * up, marking, where you stand, and the calendar. They are shown in full, and
+ * they are the whole of what somebody needs before they start.
+ *
+ * Everything after them is folded away behind a one-line summary, opened only
+ * by someone who wants it. **A new feature belongs there, not in the opening
+ * read.** This is the screen a person meets before they have used the app at
+ * all, and it is worth reading only while it stays short: five short pieces,
+ * then a list of titles.
+ *
+ * Two paragraphs and three steps is the shape of a section. Anything needing
+ * more than that is usually a sign the screen itself should be doing the
+ * explaining.
+ */
 export const GUIDE: GuideSection[] = [
   {
     id: 'idea',
     title: 'The idea',
+    essential: true,
     body: [
-      'Attend is a record of the classes you turned up to, and a straight answer to the question behind it: how many more can I miss?',
-      'You set up each class once, with the days it meets and the attendance you need. From then on the app is mostly two taps a day, and everything else is reading.',
+      'Attend keeps a record of the classes you turn up to, and answers the question behind it: how many more can I miss?',
+      'You set each class up once, with the days it meets and the attendance you need to hold. After that it is two taps a day, and everything else is reading.',
     ],
     art: 'ring',
   },
   {
     id: 'classes',
     title: 'Setting up a class',
+    essential: true,
     body: [
       'A class carries its own days of the week, its own colour, its own first and last date, and the minimum attendance you have to hold.',
-      'Dates are worth setting. With them, Attend knows how many classes are still to come, and can tell you what you can afford to miss for the rest of the term rather than only where you stand today.',
+      'The dates are worth a moment. With them, Attend knows how many classes are still to come, so it can tell you what you can afford to miss for the rest of the term rather than only where you stand today.',
     ],
     steps: [
       'Tap + on the home screen, name the class, and pick the weekdays it meets.',
-      'Set the first and last class, and the minimum attendance you need.',
-      'Open Days off to take out holidays and breaks before they happen.',
+      'Set the first and last class, and the attendance you need.',
+      'Open Days off to take out the holidays you already know about.',
     ],
     art: 'schedule',
   },
   {
-    id: 'double-days',
-    title: 'More than one class a day',
-    body: [
-      'Some days hold a class twice: a double lecture, a lab that runs two periods, a tutorial straight after the theory hour. Each one is its own class with its own attendance, so missing the second is a single absence, not a whole day.',
-      'Set it on the class itself and it repeats every week. For a one-off extra, add it to the day from the calendar instead.',
-    ],
-    steps: [
-      'In the class, under Class days, open "More than one class a day" and raise the count for that weekday.',
-      'Days that meet twice carry a ×2 on the day chip, and the term count above Days off counts them in full.',
-      'Marking asks for each one in turn: the 1st of 2, then the 2nd.',
-    ],
-    art: 'double',
-  },
-  {
-    id: 'timetable-changes',
-    title: 'When the timetable changes',
-    body: [
-      'A class does not always keep the days it started with. A lecture moves to another day in week six, a lab swaps its slot after the mid-term. When yours moves, set the new days and tell Attend the date they started: the weeks before it keep the days they actually ran on, and everything you marked on them stays exactly as it is.',
-      'The class page then carries a Timetable section, reading back the days the class ran on stretch by stretch, with the one running now marked. The calendar, the marking deck and the term count all follow the timetable that was in force on each date, so a month from before the change still shows the old days.',
-      'If the days were simply entered wrongly to begin with, say so instead and the correction applies to the whole term.',
-    ],
-    steps: [
-      'Open the class, tap Edit, and set the new class days.',
-      'Choose "Save the change" and pick the date the new timetable started.',
-      'To put right a stretch that has already passed, tap it in the list above the day buttons.',
-    ],
-    art: 'timetable',
-  },
-  {
     id: 'marking',
     title: 'Marking your day',
+    essential: true,
     body: [
-      'The Mark tab deals your classes for today one card at a time: present, absent, or cancelled. When the day is done it steps aside rather than offering to mark anything twice.',
-      'The home screen carries a banner while classes are still unmarked, counting only what is genuinely left.',
+      'The Mark tab deals today\'s classes one card at a time: present, absent, or cancelled. Once the day is done it steps aside rather than offering to mark anything twice.',
+      'While something is still unmarked, the home screen carries a banner counting what is genuinely left. Forgetting a day is no trouble. Open the calendar whenever you remember and mark it then.',
     ],
     steps: [
       'Tap the banner on the home screen, or the Mark tab.',
-      'Swipe between cards to go back and change something.',
+      'Swipe back through the cards to change something you have just marked.',
       'A class marked cancelled sits outside your percentage entirely.',
     ],
     art: 'mark',
   },
   {
-    id: 'calendar',
-    title: 'The calendar',
-    body: [
-      'The calendar is the whole picture: a filled dot for a class you have marked, a hollow one for a class still to come. Tap any day to see what it holds and to record or change it.',
-      'A day can also take a class it does not normally have. Add an extra class from the day itself and mark it whenever you like.',
-    ],
-    steps: [
-      'Tap a day to open it, then tap any class on it to record or change it.',
-      'Under "Add an extra class", pick a class to place another one on that day.',
-      'Use the filter along the top to look at one semester, or just your standalone classes.',
-    ],
-    art: 'calendar',
-  },
-  {
-    id: 'breaks',
-    title: 'Days off and breaks',
-    body: [
-      'There are two ways to lose a class, and they mean different things. A day off is removed from the schedule outright: it never becomes a class, never asks to be marked, and never touches your percentage. A cancellation is a class that was going to happen and did not, recorded as cancelled and left out of the totals.',
-      'Set days off on the class when you know the term calendar in advance. Cancel a break from the calendar when something is called off later.',
-    ],
-    steps: [
-      'Days off: open the class, expand Days off, and tap the dates. Switch to "A whole break" to take out a stretch in two taps.',
-      'Cancelling: on the Calendar, tap the crossed-out calendar icon at the top right.',
-      'Choose a single day or a stretch of days, pick which classes it affects, and anything you have already marked is left alone.',
-    ],
-    art: 'daysoff',
-  },
-  {
     id: 'class-page',
-    title: 'A class in detail',
+    title: 'Where you stand',
+    essential: true,
     body: [
-      'Open a class and the ring shows where you stand against your threshold, with the plain numbers beside it. Under that sits the sentence that matters: how many more you can miss, or how many you must attend in a row to climb back.',
-      'With dates set, "This term" shows the term as a pie that fills as it goes, and the classes you have attended and missed against what is still to come.',
-      'The overview grid at the bottom is the term day by day. Filled means present, muted means absent, struck through means cancelled, hollow with an outline means a day off. A day holding two classes is split down the middle, one half for each.',
+      'Open a class and the ring shows where you are against your threshold, with the plain numbers beside it. Underneath is the sentence that matters: how many more you can miss, or how many you need in a row to climb back.',
+      'The grid at the bottom is the term day by day. Filled is present, muted is absent, struck through is cancelled, and a hollow square is a day the class was taken off.',
     ],
     steps: [
       'Tap any square on the grid to record or change that day.',
-      'On a day with more than one class, the grid asks which one you mean.',
-      'Use the filters above the class list to pull up only the absences, or only the cancelled ones.',
+      'Use the filters above the class list to pull up only the absences, or only what was cancelled.',
     ],
     art: 'grid',
   },
   {
+    id: 'calendar',
+    title: 'The calendar',
+    essential: true,
+    body: [
+      'The calendar is the whole picture: a filled dot for a class you have marked, a hollow one for a class still to come. Tap any day to see what it holds and to record it.',
+      'A day can also take a class it does not usually have, for the extra lecture that lands out of nowhere.',
+    ],
+    steps: [
+      'Tap a day, then tap any class on it to record or change it.',
+      'Use "Add an extra class" to put a one-off on that day.',
+      'The filter along the top narrows everything to one semester.',
+    ],
+    art: 'calendar',
+  },
+
+  // Everything below is folded away by default. New features go here.
+  {
+    id: 'breaks',
+    title: 'Days off and breaks',
+    summary: 'Holidays you know about, and classes called off later.',
+    body: [
+      'There are two ways to lose a class, and they mean different things. A day off is taken out of the schedule before it happens: it never becomes a class, and it never touches your percentage. A cancellation is a class that was going to run and did not, recorded as cancelled and left out of the totals.',
+      'Set days off on the class when you have the term calendar in advance. Cancel from the calendar when something is called off later.',
+    ],
+    steps: [
+      'Days off: open the class, expand Days off, and tap the dates. "A whole break" takes out a run of them in two taps.',
+      'Cancelling: on the Calendar, tap the crossed-out calendar at the top right, then choose the days and the classes.',
+      'Anything you have already marked is left exactly as it is.',
+    ],
+    art: 'daysoff',
+  },
+  {
+    id: 'double-days',
+    title: 'More than one class a day',
+    summary: 'A double lecture is two classes, marked one at a time.',
+    body: [
+      'Some days hold a class twice: a double lecture, a lab that runs two periods, a tutorial straight after the theory hour. Each one is its own class with its own attendance, so missing the second half is a single absence rather than a whole day.',
+      'Set it on the class and it repeats every week. For a one-off extra, add it to the day from the calendar instead.',
+    ],
+    steps: [
+      'In the class, under Class days, open "More than one class a day" and raise the count for that weekday.',
+      'Marking then asks for each one in turn: the 1st of 2, then the 2nd.',
+    ],
+    art: 'double',
+  },
+  {
+    id: 'timetable-changes',
+    title: 'When your class days change',
+    summary: 'The days move partway through the term, and the weeks before stay as they were.',
+    body: [
+      'A class does not always keep the days it started with. When yours moves, set the new days and give Attend the date they started. The weeks before that date keep the days they actually ran on, and every class you marked on them stays exactly where it is.',
+      'Attend asks, because the same edit can mean two things. If the days moved, the change begins on a date. If they were simply typed in wrongly to begin with, choose "It has always been..." and the whole term is put right at once.',
+    ],
+    steps: [
+      'Open the class, tap the pencil at the top right, and set the new days.',
+      'Tap "Save changes", pick the date the new days started, and choose "Save the change".',
+      'The class page then lists the days before and after. Tap a run of weeks there to correct it or undo it.',
+    ],
+    art: 'timetable',
+  },
+  {
     id: 'semesters',
     title: 'Semesters and standalone classes',
+    summary: 'Group a term\'s classes together, or let one stand on its own.',
     body: [
       'A semester is a name and a span of dates that classes can sit inside, so a class can take its term dates from the semester instead of repeating them.',
       'Nothing has to belong to one. A Saturday dance class can stand on its own, and the filters along the top of the home screen and calendar flip between everything, one semester, or your standalone classes.',
@@ -152,30 +184,33 @@ export const GUIDE: GuideSection[] = [
   {
     id: 'archive',
     title: 'The archive',
+    summary: 'Finished terms step aside on their own, and nothing is lost.',
     body: [
-      'A class that has ended files itself away the morning after its last date, so the home screen stays about the term you are actually in. Archiving hides a class from the places that are about now, and touches no attendance at all.',
+      'A class files itself away the morning after its last date, so the home screen stays about the term you are actually in. Nothing is deleted and no attendance is touched.',
       'Everything archived lives in the Archive, grouped by term, and one tap brings it back. Archiving a semester takes its classes with it, and restoring hands them all back.',
     ],
     steps: [
       'Open the Archive from Settings, or from the line below your classes on the home screen.',
-      'To file something away early, use Archive class in the class edit sheet, or the semester row in Settings.',
+      'To file something away early, use Archive class in the class edit sheet.',
     ],
     art: 'archive',
   },
   {
     id: 'sync',
     title: 'Across your devices',
+    summary: 'Works with no signal, and is the same on your phone and your iPad.',
     body: [
-      'Everything is written to your device first and backed up to your account, so the app works with no signal and catches up when it reconnects. Sign in anywhere and your classes and attendance are simply there.',
-      'The dot at the top right shows where things stand. Tap it to see your sync status and push a sync on the spot, which is useful after a patchy connection.',
+      'Everything is written to your device first and backed up to your account, so the app works with no signal at all and catches up when it reconnects. Sign in anywhere and your classes and your attendance are simply there.',
+      'The dot at the top right shows where things stand. Tap it for your sync status, or to push a sync yourself after a patchy connection.',
     ],
     art: 'sync',
   },
   {
     id: 'data',
     title: 'Your data',
+    summary: 'Take the whole record with you whenever you need it.',
     body: [
-      'Attendance is worth being able to take with you, especially when something has to be raised with a department. Settings can export everything as JSON, or a single class as a CSV of its classes and how each one went.',
+      'Your attendance is worth being able to take with you, especially when something has to be raised with a department. Attend can hand you everything as a JSON file, or a single class as a CSV listing its classes and how each one went.',
     ],
     steps: ['Open Settings, then Data, and choose an export.'],
     art: 'export',
@@ -183,11 +218,10 @@ export const GUIDE: GuideSection[] = [
   {
     id: 'talk',
     title: 'Making Attend yours',
+    summary: 'A line straight to the person who makes it.',
     body: [
-      'Attend is built and maintained by one person, and Settings has a line straight to their desk. If something is broken, say so. If you want the app to do something it does not, say that. You do not have to be sure you are right.',
-      'Your version and the device you are holding travel with the message, so you can describe what you saw and leave the rest alone.',
-      'They read everything that comes in. Bugs tend to get dealt with first. Where there is a reply to give, it comes to the email you signed up with.',
-      'Writing it offline is fine. The message waits on your device and sends itself the next time you have a connection.',
+      'Attend is built and looked after by one person, and Settings has a line straight to their desk. If something is broken, say so. If you want the app to do something it does not do, say that. You do not have to be sure you are right.',
+      'Everything that comes in is read, and bugs tend to be dealt with first. Where there is a reply to give, it comes to the email you signed up with. Writing it offline is fine: the message waits on your device and sends itself the next time you have a connection.',
     ],
     steps: [
       'Open Settings and scroll to "Make Attend Yours".',
@@ -196,3 +230,9 @@ export const GUIDE: GuideSection[] = [
     art: 'message',
   },
 ];
+
+/** The opening read: shown in full, and kept short on purpose. */
+export const GUIDE_ESSENTIALS = GUIDE.filter((s) => s.essential);
+
+/** The rest, folded behind their summaries until somebody wants them. */
+export const GUIDE_MORE = GUIDE.filter((s) => !s.essential);
