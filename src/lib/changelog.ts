@@ -31,6 +31,24 @@ export interface Release {
  */
 export const CHANGELOG: Release[] = [
   {
+    version: '0.11.0',
+    date: '2026-09-05',
+    major: true,
+    title: 'Your classes, in your order',
+    notes: [
+      'Classes have sat in the order you happened to add them, which is nobody\'s idea of a timetable. Now you can put them in the order you actually think of them: the nine o\'clock first, the one you are worried about near the top, the Saturday thing at the bottom.',
+      'Tap Arrange above your classes. Drag any class by the handle on the right, or use the arrows to move it a place at a time, then tap Done. It is kept as you go, so there is nothing to save.',
+      'The order is one order, and everything reads it: the home screen, the Mark deck, the day sheet on the calendar, the archive. Arranging while you are looking at one semester leaves every other class exactly where it was.',
+      'It travels with the rest of your data, so the order you set on your phone is the order your iPad opens on. A new class goes on the end, where you just added it.',
+    ],
+    howTo: [
+      'On the home screen, tap Arrange above your classes.',
+      'Drag a class by the handle on the right, or use the arrows to move it one place.',
+      'Tap Done when the order looks right.',
+    ],
+    art: ['arrange'],
+  },
+  {
     version: '0.10.0',
     date: '2026-08-31',
     major: true,

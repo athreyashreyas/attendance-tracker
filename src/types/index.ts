@@ -57,6 +57,10 @@ export interface Course {
   // which is every class synced before this existed. See lib/schedule.ts.
   schedule_history: SchedulePeriod[];
   min_attendance_pct: number;
+  // Where this class sits in the order the user arranged, counting from 0.
+  // Null on a class that has never been arranged, which reads as "after the
+  // ones that have, in the order it was created". See lib/order.ts.
+  position: number | null;
   start_date: string | null; // 'YYYY-MM-DD'; null falls back to the semester
   end_date: string | null;
   // Dates inside the window where this class doesn't meet: holidays, breaks,

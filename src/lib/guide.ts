@@ -8,6 +8,7 @@
 export type GuideArtKind =
   | 'ring'
   | 'schedule'
+  | 'arrange'
   | 'double'
   | 'timetable'
   | 'mark'
@@ -76,7 +77,7 @@ export const GUIDE: GuideSection[] = [
     steps: [
       'Tap + on the home screen, name the class, and pick the weekdays it meets.',
       'Set the first and last class, and the attendance you need.',
-      'Open Days off to take out the holidays you already know about.',
+      'Tap Arrange above your classes to put them in the order you think of them.',
     ],
     art: 'schedule',
   },

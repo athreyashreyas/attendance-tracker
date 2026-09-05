@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Archive, CalendarCheck } from 'lucide-react';
+import { Archive, ArrowUpDown, CalendarCheck, Check } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { CourseCard } from '../components/courses/CourseCard';
 import { CourseForm } from '../components/courses/CourseForm';
+import { CourseArranger } from '../components/courses/CourseArranger';
 import { ViewFilterBar } from '../components/courses/ViewFilterBar';
 import { CourseCardSkeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
 import { Fab } from '../components/ui/Fab';
 import { useCourseView } from '../hooks/useCourseView';
+import { useCourseMutations } from '../hooks/useCourses';
 import { useTodayMarking } from '../hooks/useTodayMarking';
 import { listContainer, spring } from '../lib/motion';
 import type { Course } from '../types';
@@ -28,6 +30,13 @@ export function DashboardPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
+  /**
+   * Arranging is a mode you step into rather than a gesture you might trip
+   * over: a card is already tapped to open it and held to edit it, and a third
+   * meaning for the same press would make all three feel uncertain.
+   */
+  const [arranging, setArranging] = useState(false);
+  const { reorderCourses } = useCourseMutations();
 
   const hasStandalone = allCourses.some((c) => !c.semester_id);
 
@@ -49,6 +58,12 @@ export function DashboardPage() {
   }
 
   const showEmpty = !isLoading && courses.length === 0;
+  // Nothing to arrange until there are two of them.
+  const canArrange = !isLoading && courses.length > 1;
+  // Derived rather than corrected: a filter that leaves one class behind, or
+  // none, simply has nothing to arrange, and the mode falls away with it
+  // instead of being switched off after the fact.
+  const isArranging = arranging && canArrange;
 
   const subtitle =
     filter === 'all'
@@ -129,7 +144,40 @@ export function DashboardPage() {
         </div>
       )}
 
-      {!isLoading && !showEmpty && (
+      {canArrange && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          {isArranging && (
+            <p className="min-w-0 font-sans text-xs text-ink-300">
+              Drag by the handle, or use the arrows.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => setArranging((a) => !a)}
+            aria-pressed={isArranging}
+            className={`ml-auto flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-sans text-xs font-medium transition-colors ${
+              isArranging
+                ? 'bg-sage-500 text-white'
+                : 'bg-parchment-200 text-ink-500'
+            }`}
+          >
+            {isArranging ? <Check size={14} /> : <ArrowUpDown size={14} />}
+            {isArranging ? 'Done' : 'Arrange'}
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !showEmpty && isArranging && (
+        <CourseArranger
+          courses={courses}
+          semesterOf={semesterOf}
+          onReorder={(orderedIds) =>
+            void reorderCourses({ all: allCourses, orderedIds })
+          }
+        />
+      )}
+
+      {!isLoading && !showEmpty && !isArranging && (
         <motion.div
           variants={listContainer}
           initial="initial"
@@ -158,7 +206,7 @@ export function DashboardPage() {
         </Link>
       )}
 
-      {!showEmpty && <Fab onClick={openAdd} label="Add class" />}
+      {!showEmpty && !isArranging && <Fab onClick={openAdd} label="Add class" />}
 
       <CourseForm
         open={formOpen}

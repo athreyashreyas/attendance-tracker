@@ -28,6 +28,9 @@ export function makeCourse(overrides: Partial<Course> = {}): Course {
     // class starts and how every class saved before timelines existed reads.
     schedule_history: [],
     min_attendance_pct: 75,
+    // Unarranged, which is how a class starts and how every class read before
+    // arranging existed.
+    position: null,
     start_date: null,
     end_date: null,
     excluded_dates: [],

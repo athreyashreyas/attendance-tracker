@@ -8,7 +8,7 @@ import type { Course, Semester } from '../types';
 export interface CourseView {
   filter: ViewFilter;
   setFilter: (filter: ViewFilter) => void;
-  /** Live courses matching the current filter (sorted by creation). */
+  /** Live courses matching the current filter, in the order they are arranged. */
   courses: Course[];
   /** Every live course, regardless of filter. */
   allCourses: Course[];

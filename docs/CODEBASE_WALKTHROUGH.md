@@ -192,6 +192,15 @@ The single source of domain shapes:
     timeline read back as stretches of dates ("Mon and Wed until 14 Sep").
     `scheduleSpans` sorts but never merges, so a row cannot vanish under the user
     mid-edit and a span's index always points back at the entry it came from.
+- **`order.ts`** — **the order classes are shown in**. A class carries `position`
+  (counting from 0); a class that has never been arranged carries null and sorts
+  after the arranged ones by creation, which is exactly how the app read before
+  this existed. `sortCourses` is used by `loadAllCourses`, so one order feeds the
+  dashboard, the marking deck, the calendar's day sheet and the archive.
+  `reorderPlan(all, orderedIds)` is the interesting one: it numbers the whole
+  list, hands the visible classes back their own slots in the new order, and
+  returns only the rows that actually moved. That is what lets you arrange
+  inside a single semester without disturbing anything outside it.
 - **`colors.ts`** — `COURSE_COLORS` (16 muted swatches), `DEFAULT_COURSE_COLOR` (sage),
   `attendanceColor(pct, threshold)` (rose/amber/sage), and `hexToRgba`.
 - **`status.ts`** — shared session-status `STATUS_LABEL`, picker `STATUS_OPTIONS`
@@ -308,6 +317,12 @@ routes: `/dashboard`, `/courses/:id`, `/quick-mark`, `/calendar`, `/settings`. A
   `handleSave` as an argument rather than read from state, because both buttons answer
   and save in the same tick; and validation runs against the timeline **being saved**,
   which is not the one on screen when a change has just been recorded.
+- **`courses/CourseArranger.tsx`** — the home screen's Arrange mode: a one-column
+  `Reorder.Group` where **only the grip drags** (`useDragControls` +
+  `dragListener={false}`, the same bargain `BottomSheet` makes), so a long list
+  still scrolls. Chevrons move a class one place at a time, which is how this
+  works with a keyboard or a screen reader. Arranging is a mode rather than a
+  gesture because a card is already tapped to open and held to edit.
 - **`courses/ScheduleTimeline.tsx`** — the read-back on a class page: the days it ran
   on, stretch by stretch, with the one running now marked. Renders nothing for a class
   whose days have never changed.
@@ -367,6 +382,8 @@ routes: `/dashboard`, `/courses/:id`, `/quick-mark`, `/calendar`, `/settings`. A
 - **`migration-006` … `010`** — days off, the archive columns, double lectures
   (`sessions_per_day`, `sessions.slot`), audit retention, and the sync indexes plus the
   `schema_migrations` registry.
+- **`migration-012-course-order.sql`** — `courses.position`, nullable, so every
+  existing class keeps the place it already reads at.
 - **`migration-011-schedule-history.sql`** — `courses.schedule_history`, the timetable
   timeline. Defaults to `'[]'`, so every existing class keeps reading from
   `schedule_days` and nothing about it changes.
@@ -396,6 +413,10 @@ routes: `/dashboard`, `/courses/:id`, `/quick-mark`, `/calendar`, `/settings`. A
   `generateExpectedDates`, `classesOnDay`, the projection) picks up the right timetable
   on its own, because they all ask `schedulePeriods` about a date. Nothing already
   recorded moves.
+- **Arrange the classes.** Tap Arrange on the home screen → drag by the grip or use
+  the arrows → `reorderPlan` works out the few rows that moved → `reorderCourses`
+  writes them through `writeLocal` like any other change. Because `loadAllCourses`
+  sorts by `position`, every other screen picks the new order up at once.
 - **Break.** Pick a range and which classes it applies to → `markBreak` cancels the
   scheduled-but-unrecorded dates, leaving anything you already marked.
 - **Live update.** New deploy → service worker installs → `controllerchange` →

@@ -257,6 +257,32 @@ describe('a timetable that changes partway through the term', () => {
     expect(proj.remaining).toBe(5);
   });
 
+  it('gives the calendar the old days before the change and the new ones after', () => {
+    // classesOnDay is what CalendarPage.shapeOf calls for every square of the
+    // month, and what its dots are drawn from. Walking September through it is
+    // the calendar's own question: which days does this class sit on?
+    const withClass: number[] = [];
+    for (let day = 1; day <= 30; day++) {
+      const key = d(day);
+      if (classesOnDay(moved, key, []).length > 0) withClass.push(day);
+    }
+    expect(withClass).toEqual([
+      2, 7, 9, 14, // Wed, Mon, Wed, Mon: the old timetable
+      15, 17, 22, 24, 29, // Tue, Thu, Tue, Thu, Tue: the new one
+    ]);
+  });
+
+  it('still shows a class marked on a day the new timetable dropped', () => {
+    // The record outlives the schedule: a Monday after the change is no longer
+    // a class day, but a Monday you marked is still on the calendar, and still
+    // in your percentage.
+    const marked = makeSession(moved.id, d(21), 'present');
+    const [row] = classesOnDay(moved, d(21), [marked]);
+    expect(row.session?.status).toBe('present');
+    expect(row.scheduled).toBe(false); // there, but no longer expected
+    expect(computeAttendanceStats(moved, [marked]).present).toBe(1);
+  });
+
   it('reads a change in how often a day meets, not only which days', () => {
     const doubled = makeCourse({
       schedule_days: [MON],

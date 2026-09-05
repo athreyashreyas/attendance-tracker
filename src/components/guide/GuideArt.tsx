@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Check, X, Bug, Lightbulb } from 'lucide-react';
+import { Check, X, Bug, GripVertical, Lightbulb } from 'lucide-react';
 import { ABSENT_COLOR } from '../../lib/colors';
 import type { GuideArtKind } from '../../lib/guide';
 
@@ -189,6 +189,44 @@ export function GuideArt({ kind }: { kind: GuideArtKind }) {
                 }`}
               >
                 {status}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+
+    // Arranging the home screen: a card lifted out of the stack by its handle.
+    case 'arrange':
+      return (
+        <div className="w-full max-w-[240px] space-y-2">
+          {[
+            { name: 'Physics', color: PLUM, lifted: false },
+            { name: 'Statistics', color: SAGE, lifted: true },
+            { name: 'Latin', color: '#B8860B', lifted: false },
+          ].map((row) => (
+            <div
+              key={row.name}
+              className={`flex items-center gap-3 rounded-card bg-parchment-50 p-3 ${
+                row.lifted ? 'shadow-md' : 'shadow-sm'
+              }`}
+              style={
+                row.lifted
+                  ? { transform: 'translateX(10px) scale(1.03)' }
+                  : undefined
+              }
+            >
+              <span
+                className="h-7 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: row.color }}
+              />
+              <span className="min-w-0 flex-1 font-sans text-sm text-ink-900">
+                {row.name}
+              </span>
+              <span
+                className={row.lifted ? 'text-ink-500' : 'text-ink-100'}
+                aria-hidden="true"
+              >
+                <GripVertical size={16} />
               </span>
             </div>
           ))}

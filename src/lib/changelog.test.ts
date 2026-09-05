@@ -17,6 +17,7 @@ import { isNewerVersion } from './whatsNew';
 const ART_KINDS = new Set<GuideArtKind>([
   'ring',
   'schedule',
+  'arrange',
   'double',
   'timetable',
   'mark',

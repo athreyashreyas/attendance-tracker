@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { toRemote } from '../utils/records';
 import { nowIso } from '../utils/dates';
 import { scheduleFields } from '../lib/schedule';
+import { nextPosition, reorderPlan, sortCourses } from '../lib/order';
 import type {
   ClassesPerDay,
   Course,
@@ -14,7 +15,9 @@ import type {
 
 async function loadAllCourses(): Promise<Course[]> {
   const courses = await db.courses.filter((c) => !c.deleted_at).toArray();
-  return courses.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // One order, read by everything: the dashboard, the marking deck, the day
+  // sheet on the calendar, the archive. See lib/order.ts.
+  return sortCourses(courses);
 }
 
 /**
@@ -52,6 +55,14 @@ export interface CourseInput {
   excluded_dates?: string[];
 }
 
+/** One class's new place in the order, as the arranger hands them over. */
+export interface CourseOrderInput {
+  /** Every live class, so a place can be worked out against the whole list. */
+  all: Course[];
+  /** The classes on screen, in the order they were just put into. */
+  orderedIds: string[];
+}
+
 export function useCourseMutations() {
   const queryClient = useQueryClient();
   const invalidate = () => {
@@ -81,6 +92,11 @@ export function useCourseMutations() {
       color: input.color,
       ...schedule,
       min_attendance_pct: input.min_attendance_pct,
+      // A class keeps its place. A brand-new one goes on the end, where it was
+      // just added, rather than jumping into the middle of the list.
+      position:
+        existing?.position ??
+        (input.id ? null : nextPosition(await db.courses.toArray())),
       start_date: input.start_date ?? null,
       end_date: input.end_date ?? null,
       // Kept sorted so the stored order never depends on the order they were tapped.
@@ -133,5 +149,32 @@ export function useCourseMutations() {
     void queryClient.invalidateQueries({ queryKey: ['sessions'] });
   }
 
-  return { saveCourse, setCourseArchived, deleteCourse };
+  /**
+   * Write a new order. Only the classes whose place actually moved are
+   * written, so dragging one card is one write rather than a rewrite of the
+   * whole list. The first arrange is the exception: it hands every class the
+   * place it already reads at, which is what turns the implicit order into an
+   * explicit one.
+   */
+  async function reorderCourses({
+    all,
+    orderedIds,
+  }: CourseOrderInput): Promise<number> {
+    const changes = reorderPlan(all, orderedIds);
+    if (changes.length === 0) return 0;
+    const now = nowIso();
+    for (const { id, position } of changes) {
+      const course = await db.courses.get(id);
+      if (!course) continue;
+      await syncEngine.writeLocal('courses', 'UPDATE', {
+        ...toRemote(course),
+        position,
+        updated_at: now,
+      } as Course);
+    }
+    invalidate();
+    return changes.length;
+  }
+
+  return { saveCourse, setCourseArchived, deleteCourse, reorderCourses };
 }
