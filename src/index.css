@@ -11,6 +11,22 @@
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
     --keyboard-height: 0px;
+    --glass-top: 0px;
+  }
+
+  /* iOS 26 paints a Liquid Glass scroll edge effect across the top of an
+     installed web app. It is anchored to the status bar, but it feathers well
+     past the safe-area inset, so a heading sitting immediately below the inset
+     is rendered blurred even with the page scrolled to the top. Apple ships no
+     way to switch it off, and dropping the translucent status bar only moves
+     the webview, not the effect. What is left is to keep anything worth reading
+     out of the band: below the inset we leave a strip of bare parchment for the
+     glass to blur, roughly the height of a native navigation bar. Tune this one
+     value if the band turns out to reach further on some device. */
+  @media (display-mode: standalone) {
+    :root {
+      --glass-top: 2.25rem;
+    }
   }
 
   /* iOS reports 100dvh as roughly the screen height minus the top safe-area
@@ -95,10 +111,10 @@
     padding-bottom: calc(1rem + var(--safe-bottom));
   }
   .safe-top {
-    padding-top: calc(1rem + var(--safe-top));
+    padding-top: calc(1rem + var(--safe-top) + var(--glass-top));
   }
   .pt-safe {
-    padding-top: var(--safe-top);
+    padding-top: calc(var(--safe-top) + var(--glass-top));
   }
   .pb-safe {
     padding-bottom: var(--safe-bottom);
